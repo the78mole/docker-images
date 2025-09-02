@@ -17,6 +17,7 @@ repos:
     hooks:
       - id: shellcheck
         args: [-x, -e, SC1091]
+        files: \.(sh|bash)$
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.45.0
@@ -30,3 +31,10 @@ repos:
       - id: prettier
         types_or: [json, yaml, markdown]
         args: [--write]
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.13.1-beta
+    hooks:
+      - id: hadolint-docker
+        name: Lint Dockerfiles
+        files: images/.*/Dockerfile.*
