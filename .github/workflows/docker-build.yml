@@ -41,8 +41,7 @@ jobs:
         id: changes
         run: |
           # Get list of all images
-          all_images='["kicaddev", "platformio", "wordpress-smtp", \
-            "heishamon-dev", "arduino-cli", "latex"]'
+          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex"]'
 
           if [[ "${{ github.event_name }}" == "push" ]] && \
              [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
