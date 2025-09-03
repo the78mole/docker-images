@@ -37,31 +37,97 @@ jobs:
           bump_each_commit: true
           search_commit_body: true
 
-      - name: Detect changed images
+      - name: Install jq for JSON parsing
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Detect changed images and check package existence
         id: changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get list of all images
+          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex)
           all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex"]'
+
+          # Function to check if package version exists in GHCR
+          check_package_exists() {
+            local image=$1
+            local version=$2
+            local owner="${{ github.repository_owner }}"
+
+            echo "Checking if package $owner/$image:$version exists in GHCR..."
+
+            # Query GitHub Container Registry API for package versions
+            response=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/user/packages/container/$image/versions" 2>/dev/null)
+
+            if [[ $? -ne 0 ]] || [[ "$response" == *"Not Found"* ]] || [[ "$response" == *"message"*"Not Found"* ]]; then
+              echo "  Package $image not found or no versions available"
+              return 1
+            fi
+
+            # Check if our version exists in the response
+            if echo "$response" | jq -r '.[].metadata.container.tags[]?' | grep -q "^$version$"; then
+              echo "  ✅ Version $version exists for $image"
+              return 0
+            else
+              echo "  ❌ Version $version NOT found for $image"
+              return 1
+            fi
+          }
+
+          # Collect images that need building
+          images_to_build=()
 
           if [[ "${{ github.event_name }}" == "push" ]] && \
              [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             # For pushes to main, check what changed in the last commit
             changed_files=$(git diff --name-only HEAD~1 HEAD)
-            changed_images=()
+            echo "=== Checking for changed images ==="
 
-            for image in kicaddev platformio wordpress-smtp \
-                        heishamon-dev arduino-cli latex; do
+            for image in "${all_images_array[@]}"; do
+              should_build=false
+              reason=""
+
+              # Check if image files changed
               if echo "$changed_files" | grep -q "^images/$image/"; then
-                changed_images+=("\"$image\"")
+                should_build=true
+                reason="files changed"
+                echo "📝 $image: Files changed"
+              fi
+
+              # Check if package version exists (only if we have a GITHUB_TOKEN)
+              if [[ -n "$GITHUB_TOKEN" ]]; then
+                version=$(cat "images/$image/VERSION")
+                if ! check_package_exists "$image" "$version"; then
+                  should_build=true
+                  if [[ -n "$reason" ]]; then
+                    reason="$reason + missing package"
+                  else
+                    reason="missing package version $version"
+                  fi
+                  echo "📦 $image: Package version $version missing from registry"
+                fi
+              else
+                echo "⚠️  No GITHUB_TOKEN available, skipping package existence check"
+              fi
+
+              if [[ "$should_build" == "true" ]]; then
+                images_to_build+=("\"$image\"")
+                echo "✅ $image will be built ($reason)"
+              else
+                echo "⏭️  $image will be skipped (no changes, package exists)"
               fi
             done
 
-            if [ ${#changed_images[@]} -eq 0 ]; then
-              echo "No image changes detected"
+            if [ ${#images_to_build[@]} -eq 0 ]; then
+              echo "=== No images need building ==="
               echo "images=[]" >> $GITHUB_OUTPUT
             else
-              images_json="[$(IFS=,; echo "${changed_images[*]}")]"
-              echo "Changed images: $images_json"
+              images_json="[$(IFS=,; echo "${images_to_build[*]}")]"
+              echo "=== Images to build: $images_json ==="
               echo "images=$images_json" >> $GITHUB_OUTPUT
             fi
           else
