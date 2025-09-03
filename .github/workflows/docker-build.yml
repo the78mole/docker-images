@@ -296,10 +296,8 @@ jobs:
           # Generate tags
           tags="ghcr.io/${{ github.repository_owner }}/$image:latest"
           tags="$tags,ghcr.io/${{ github.repository_owner }}/$image:$version"
-          if [[ "${{ github.event_name }}" == "push" ]] && \
-             [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            tags="$tags,ghcr.io/${{ github.repository_owner }}/$image:$repo_version"
-          fi
+          # Note: Repository version tag removed to avoid confusion
+          # Each image uses only its own VERSION file for tagging
 
           echo "Generated tags: $tags"
           echo "tags=$tags" >> $GITHUB_OUTPUT
@@ -311,8 +309,8 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.context }}/${{ matrix.dockerfile }}
           push: >-
-            ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-            (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
+            ${{ github.event_name == 'push' &&
+            github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=${{ steps.meta.outputs.image_name }}
