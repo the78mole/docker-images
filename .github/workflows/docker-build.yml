@@ -311,8 +311,8 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.context }}/${{ matrix.dockerfile }}
           push: >-
-            ${{ github.event_name == 'push' &&
-            github.ref == 'refs/heads/main' }}
+            ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+            (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=${{ steps.meta.outputs.image_name }}
