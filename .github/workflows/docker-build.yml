@@ -12,6 +12,7 @@ permissions:
   contents: write
   packages: write
   id-token: write
+  actions: read
 
 jobs:
   detect-changes:
@@ -202,6 +203,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      actions: read
     needs: [detect-changes, validate-versions]
     if: >-
       needs.detect-changes.outputs.images != '[]' &&
