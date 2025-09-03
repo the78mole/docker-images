@@ -114,6 +114,9 @@ jobs:
 
   build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     needs: [detect-changes, validate-versions]
     if: >-
       needs.detect-changes.outputs.images != '[]' &&
@@ -175,8 +178,17 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug authentication
+        if: steps.should_build.outputs.should_build == 'true'
+        run: |
+          echo "Repository owner: ${{ github.repository_owner }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
 
       - name: Extract metadata
         if: steps.should_build.outputs.should_build == 'true'
@@ -201,6 +213,7 @@ jobs:
             tags="$tags,ghcr.io/${{ github.repository_owner }}/$image:$repo_version"
           fi
 
+          echo "Generated tags: $tags"
           echo "tags=$tags" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
