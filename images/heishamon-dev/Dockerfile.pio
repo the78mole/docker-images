@@ -1,0 +1,40 @@
+FROM ghcr.io/the78mole/arduino-cli:latest
+
+ARG USERNAME=ubuntu
+ARG USER_UID=1000
+ARG USER_GID=1000
+
+# Wechsel zu root für Package-Installation
+USER root
+
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-setuptools \
+    python3-wheel \
+    python3-serial \
+    python3-pyudev \
+    python3-requests \
+    python3-paho-mqtt \
+    python3-psutil \
+    python3-venv \
+    python3-intelhex \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+USER ${USERNAME}
+RUN python3 -m pip install --user pipx --break-system-packages \
+    && python3 -m pipx ensurepath \
+    && /home/${USERNAME}/.local/bin/pipx install platformio \
+    && /home/${USERNAME}/.local/bin/pipx inject platformio intelhex
+
+# Arbeitsverzeichnis und Nutzer setzen
+WORKDIR /home/${USERNAME}
+USER ${USERNAME}
+
+# The platformio.ini is only for pre-installing the approprite packages for heishamon
+COPY platformio.ini.inst /home/${USERNAME}/platformio.ini
+ENV PIO_CORE_DIR=/home/${USERNAME}/.platformio
+ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
+RUN pio pkg install && rm platformio.ini
+
+# Standardkommando
+CMD ["pio", "system", "info"]

@@ -21,8 +21,26 @@
     {
       "matchDatasources": ["docker"],
       "addLabels": ["docker"]
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "addLabels": ["dockerfile"]
+    },
+    {
+      "matchFileNames": ["images/*/Dockerfile*"],
+      "addLabels": ["docker-images"]
+    },
+    {
+      "matchFileNames": ["images/kicaddev/requirements.txt"],
+      "addLabels": ["kicaddev", "python"]
     }
   ],
+  "dockerfile": {
+    "fileMatch": ["images/.+/Dockerfile[^/]*$"]
+  },
+  "pip_requirements": {
+    "fileMatch": ["images/.+/requirements\\.txt$"]
+  },
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "platformAutomerge": false,
