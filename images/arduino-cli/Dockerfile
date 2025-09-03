@@ -27,9 +27,6 @@ RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/inst
 RUN echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/${USERNAME} && \
     chmod 0440 /etc/sudoers.d/${USERNAME}
 
-RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/ubuntu && \
-    chmod 0440 /etc/sudoers.d/ubuntu
-
 RUN pip install --break-system-packages pre-commit
 
 # Arbeitsverzeichnis und Nutzer setzen
