@@ -209,6 +209,7 @@ jobs:
       needs.detect-changes.outputs.images != '[]' &&
       needs.detect-changes.outputs.images != ''
     strategy:
+      fail-fast: false
       matrix:
         include:
           - image: kicaddev
@@ -321,6 +322,7 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        continue-on-error: false
 
   create-release:
     runs-on: ubuntu-latest
