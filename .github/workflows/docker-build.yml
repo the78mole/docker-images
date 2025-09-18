@@ -48,10 +48,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get list of all images
-          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr zephyr-sdk)
-          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "zephyr-sdk"]'
-
-          # Function to check if package version exists in GHCR
+          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr)
+          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr"]'          # Function to check if package version exists in GHCR
           check_package_exists() {
             local image=$1
             local version=$2
@@ -216,40 +214,65 @@ jobs:
             dockerfile: Dockerfile
             context: images/kicaddev
             dependencies: []
+            spacefree: false
           - image: platformio
             dockerfile: Dockerfile
             context: images/platformio
             dependencies: []
+            spacefree: false
           - image: wordpress-smtp
             dockerfile: Dockerfile
             context: images/wordpress-smtp
             dependencies: []
+            spacefree: false
           - image: heishamon-dev
             dockerfile: Dockerfile
             context: images/heishamon-dev
             dependencies: []
+            spacefree: false
           - image: heishamon-dev-pio
             dockerfile: Dockerfile.pio
             context: images/heishamon-dev
             source_image: heishamon-dev
             dependencies: []
+            spacefree: false
           - image: arduino-cli
             dockerfile: Dockerfile
             context: images/arduino-cli
             dependencies: []
+            spacefree: false
           - image: latex
             dockerfile: Dockerfile
             context: images/latex
             dependencies: []
+            spacefree: true
           - image: zephyr
             dockerfile: Dockerfile
             context: images/zephyr
             dependencies: []
-          - image: zephyr-sdk
-            dockerfile: Dockerfile
-            context: images/zephyr-sdk
-            dependencies: ["zephyr"]
+            spacefree: true
     steps:
+      - name: Free Disk Space (Ubuntu)
+        if: matrix.spacefree == true
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+          
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Check disk space
+        if: matrix.spacefree == true
+        run: df -h
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -605,8 +628,7 @@ jobs:
             | `heishamon-dev-pio` | HeishaMon development (PlatformIO) | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `arduino-cli` | Arduino CLI development environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `latex` | LaTeX/TeXLive environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
-            | `zephyr` | Zephyr RTOS development base environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
-            | `zephyr-sdk` | Zephyr RTOS with pre-installed SDK and sources | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
+            | `zephyr` | Zephyr RTOS development environment with pre-installed SDK | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
 
             ## 🚀 Usage
 
