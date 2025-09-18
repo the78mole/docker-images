@@ -48,8 +48,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get list of all images
-          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex)
-          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex"]'
+          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr zephyr-sdk)
+          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "zephyr-sdk"]'
 
           # Function to check if package version exists in GHCR
           check_package_exists() {
@@ -209,31 +209,46 @@ jobs:
       needs.detect-changes.outputs.images != '[]' &&
       needs.detect-changes.outputs.images != ''
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - image: kicaddev
             dockerfile: Dockerfile
             context: images/kicaddev
+            dependencies: []
           - image: platformio
             dockerfile: Dockerfile
             context: images/platformio
+            dependencies: []
           - image: wordpress-smtp
             dockerfile: Dockerfile
             context: images/wordpress-smtp
+            dependencies: []
           - image: heishamon-dev
             dockerfile: Dockerfile
             context: images/heishamon-dev
+            dependencies: []
           - image: heishamon-dev-pio
             dockerfile: Dockerfile.pio
             context: images/heishamon-dev
             source_image: heishamon-dev
+            dependencies: []
           - image: arduino-cli
             dockerfile: Dockerfile
             context: images/arduino-cli
+            dependencies: []
           - image: latex
             dockerfile: Dockerfile
             context: images/latex
+            dependencies: []
+          - image: zephyr
+            dockerfile: Dockerfile
+            context: images/zephyr
+            dependencies: []
+          - image: zephyr-sdk
+            dockerfile: Dockerfile
+            context: images/zephyr-sdk
+            dependencies: ["zephyr"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -256,6 +271,142 @@ jobs:
             echo "should_build=false" >> $GITHUB_OUTPUT
             echo "⏭️ Skipping $image (no changes in $source_image)"
           fi
+
+      - name: Wait for dependencies
+        if: steps.should_build.outputs.should_build == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dependencies='${{ toJSON(matrix.dependencies) }}'
+          
+          if [ "$dependencies" = "[]" ] || [ "$dependencies" = "null" ]; then
+            echo "ℹ️  No dependencies for ${{ matrix.image }}"
+            exit 0
+          fi
+          
+          echo "🔄 Checking dependencies for ${{ matrix.image }}: $dependencies"
+          
+          # Parse dependencies array
+          deps=$(echo "$dependencies" | jq -r '.[]')
+          
+          for dep in $deps; do
+            echo "⏳ Waiting for dependency: $dep"
+            
+            # Get required version for dependency
+            if [ -f "images/$dep/VERSION" ]; then
+              required_version=$(cat "images/$dep/VERSION")
+              echo "   Required version: $required_version"
+            else
+              echo "❌ VERSION file not found for dependency $dep"
+              exit 1
+            fi
+            
+            # First check if dependency is being built in current workflow
+            changed_images='${{ needs.detect-changes.outputs.images }}'
+            if echo "$changed_images" | grep -q "\"$dep\""; then
+              echo "   🔄 Dependency $dep is being built in current workflow"
+              
+              # Wait for dependency job to complete by checking GitHub API
+              max_wait=1800  # 30 minutes
+              wait_interval=30
+              elapsed=0
+              
+              while [ $elapsed -lt $max_wait ]; do
+                echo "   🔍 Checking workflow jobs status... (${elapsed}s elapsed)"
+                
+                # Get current workflow run jobs
+                jobs_response=$(curl -s \
+                  -H "Authorization: Bearer $GITHUB_TOKEN" \
+                  -H "Accept: application/vnd.github.v3+json" \
+                  "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
+                
+                # Debug: Show all job names
+                if [ $elapsed -eq 0 ]; then
+                  echo "   🔍 Available jobs in this workflow:"
+                  echo "$jobs_response" | jq -r '.jobs[].name' | sed 's/^/     - /'
+                fi
+                
+                # Check if dependency build job completed successfully
+                dep_job_status=$(echo "$jobs_response" | jq -r --arg dep "$dep" '
+                  .jobs[] | 
+                  select(.name | test("build-and-push \\(.+ / " + $dep + "\\)")) | 
+                  .status + ":" + (.conclusion // "null")')
+                
+                if [ -z "$dep_job_status" ]; then
+                  # Alternative: try simpler job name matching
+                  dep_job_status=$(echo "$jobs_response" | jq -r --arg dep "$dep" '
+                    .jobs[] | 
+                    select(.name | contains($dep)) | 
+                    select(.name | contains("build-and-push")) |
+                    .status + ":" + (.conclusion // "null")' | head -1)
+                fi
+                
+                echo "   📊 Job status for $dep: $dep_job_status"
+                
+                case "$dep_job_status" in
+                  "completed:success")
+                    echo "   ✅ Dependency $dep build completed successfully!"
+                    break
+                    ;;
+                  "completed:failure"|"completed:cancelled"|"completed:skipped")
+                    echo "❌ Dependency $dep build failed: $dep_job_status"
+                    exit 1
+                    ;;
+                  "in_progress:null"|"queued:null")
+                    echo "   ⏳ Dependency $dep build still in progress..."
+                    ;;
+                  "")
+                    echo "   ⏳ Dependency $dep build job not found yet..."
+                    ;;
+                  *)
+                    echo "   ❓ Unknown status for $dep: $dep_job_status"
+                    ;;
+                esac
+                
+                sleep $wait_interval
+                elapsed=$((elapsed + wait_interval))
+              done
+              
+              # Check if we timed out
+              if [ $elapsed -ge $max_wait ]; then
+                echo "❌ Timeout waiting for dependency $dep build to complete"
+                exit 1
+              fi
+              
+            else
+              echo "   📦 Dependency $dep not being built in current workflow, checking registry..."
+              
+              # Check if dependency image exists in GHCR
+              response=$(curl -s -w "%{http_code}" \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/user/packages/container/$dep/versions" 2>/dev/null)
+              
+              http_code="${response: -3}"
+              response_body="${response%???}"
+              
+              case "$http_code" in
+                200)
+                  if echo "$response_body" | jq -r '.[].metadata.container.tags[]?' 2>/dev/null | grep -q "^$required_version$"; then
+                    echo "   ✅ Dependency $dep:$required_version is available in registry!"
+                  else
+                    echo "❌ Required version $required_version not found in registry for $dep"
+                    exit 1
+                  fi
+                  ;;
+                404)
+                  echo "❌ Package $dep not found in registry (HTTP 404)"
+                  exit 1
+                  ;;
+                *)
+                  echo "❌ API error (HTTP $http_code) checking registry for $dep"
+                  exit 1
+                  ;;
+              esac
+            fi
+          done
+          
+          echo "✅ All dependencies satisfied for ${{ matrix.image }}"
 
       - name: Set up Docker Buildx
         if: steps.should_build.outputs.should_build == 'true'
@@ -362,6 +513,8 @@ jobs:
             | `heishamon-dev-pio` | HeishaMon development (PlatformIO) | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `arduino-cli` | Arduino CLI development environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `latex` | LaTeX/TeXLive environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
+            | `zephyr` | Zephyr RTOS development base environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
+            | `zephyr-sdk` | Zephyr RTOS with pre-installed SDK and sources | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
 
             ## 🚀 Usage
 
