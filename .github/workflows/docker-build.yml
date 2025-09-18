@@ -453,6 +453,32 @@ jobs:
           echo "Generated tags: $tags"
           echo "tags=$tags" >> $GITHUB_OUTPUT
 
+      - name: Prepare build arguments
+        if: steps.should_build.outputs.should_build == 'true'
+        id: build_args
+        run: |
+          image="${{ matrix.image }}"
+          build_args=""
+          
+          # Handle dependencies by setting appropriate base image build args
+          dependencies='${{ toJSON(matrix.dependencies) }}'
+          if [ "$dependencies" != "[]" ] && [ "$dependencies" != "null" ]; then
+            echo "Setting up build args for dependencies..."
+            deps=$(echo "$dependencies" | jq -r '.[]')
+            
+            for dep in $deps; do
+              if [ -f "images/$dep/VERSION" ]; then
+                dep_version=$(cat "images/$dep/VERSION")
+                echo "Setting BASE_IMAGE for dependency $dep:$dep_version"
+                build_args="BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/$dep:$dep_version"
+                break  # Use first dependency as base image
+              fi
+            done
+          fi
+          
+          echo "build_args=$build_args" >> $GITHUB_OUTPUT
+          echo "Build args: $build_args"
+
       - name: Build and push Docker image
         if: steps.should_build.outputs.should_build == 'true'
         uses: docker/build-push-action@v6
@@ -469,6 +495,7 @@ jobs:
             org.opencontainers.image.version=${{ steps.meta.outputs.image_version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          build-args: ${{ steps.build_args.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
         continue-on-error: false

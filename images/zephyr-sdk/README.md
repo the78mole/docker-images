@@ -24,10 +24,21 @@ docker run --rm -it ghcr.io/the78mole/zephyr-sdk:latest
 docker run --rm -it -v $(pwd):/workspaces ghcr.io/the78mole/zephyr-sdk:latest
 ```
 
-### Initialize a Zephyr workspace
+### Create a Zephyr workspace with symlinks (recommended)
 
 ```bash
-# Initialize new workspace
+# Create workspace with efficient symlinks (saves ~7GB per project!)
+/home/zephyr/create-workspace.sh /workspaces/my-project
+cd /workspaces/my-project
+
+# Build sample immediately (no west update needed)
+west build -b qemu_x86 zephyr/samples/hello_world
+```
+
+### Alternative: Traditional workspace initialization
+
+```bash
+# Initialize new workspace (downloads ~7GB of sources)
 ~/init-workspace.sh
 
 # Or manually

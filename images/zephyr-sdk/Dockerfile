@@ -1,4 +1,6 @@
-FROM test-zephyr:latest
+# Use published zephyr image as base, fallback to local for development
+ARG BASE_IMAGE=ghcr.io/the78mole/zephyr:latest
+FROM ${BASE_IMAGE}
 
 # Set environment variable for SDK version (managed by renovate)
 ENV ZEPHYR_SDK_VERSION=0.17.4
