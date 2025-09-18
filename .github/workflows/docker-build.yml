@@ -48,10 +48,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get list of all images
-          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex)
-          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex"]'
-
-          # Function to check if package version exists in GHCR
+          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr)
+          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr"]'          # Function to check if package version exists in GHCR
           check_package_exists() {
             local image=$1
             local version=$2
@@ -209,32 +207,72 @@ jobs:
       needs.detect-changes.outputs.images != '[]' &&
       needs.detect-changes.outputs.images != ''
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - image: kicaddev
             dockerfile: Dockerfile
             context: images/kicaddev
+            dependencies: []
+            spacefree: false
           - image: platformio
             dockerfile: Dockerfile
             context: images/platformio
+            dependencies: []
+            spacefree: false
           - image: wordpress-smtp
             dockerfile: Dockerfile
             context: images/wordpress-smtp
+            dependencies: []
+            spacefree: false
           - image: heishamon-dev
             dockerfile: Dockerfile
             context: images/heishamon-dev
+            dependencies: []
+            spacefree: false
           - image: heishamon-dev-pio
             dockerfile: Dockerfile.pio
             context: images/heishamon-dev
             source_image: heishamon-dev
+            dependencies: []
+            spacefree: false
           - image: arduino-cli
             dockerfile: Dockerfile
             context: images/arduino-cli
+            dependencies: []
+            spacefree: false
           - image: latex
             dockerfile: Dockerfile
             context: images/latex
+            dependencies: []
+            spacefree: true
+          - image: zephyr
+            dockerfile: Dockerfile
+            context: images/zephyr
+            dependencies: []
+            spacefree: true
     steps:
+      - name: Free Disk Space (Ubuntu)
+        if: matrix.spacefree == true
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+          
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Check disk space
+        if: matrix.spacefree == true
+        run: df -h
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -256,6 +294,173 @@ jobs:
             echo "should_build=false" >> $GITHUB_OUTPUT
             echo "⏭️ Skipping $image (no changes in $source_image)"
           fi
+
+      - name: Wait for dependencies
+        if: steps.should_build.outputs.should_build == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dependencies='${{ toJSON(matrix.dependencies) }}'
+          
+          if [ "$dependencies" = "[]" ] || [ "$dependencies" = "null" ]; then
+            echo "ℹ️  No dependencies for ${{ matrix.image }}"
+            exit 0
+          fi
+          
+          echo "🔄 Checking dependencies for ${{ matrix.image }}: $dependencies"
+          
+          # Parse dependencies array
+          deps=$(echo "$dependencies" | jq -r '.[]')
+          
+          for dep in $deps; do
+            echo "⏳ Waiting for dependency: $dep"
+            
+            # Get required version for dependency
+            if [ -f "images/$dep/VERSION" ]; then
+              required_version=$(cat "images/$dep/VERSION")
+              echo "   Required version: $required_version"
+            else
+              echo "❌ VERSION file not found for dependency $dep"
+              exit 1
+            fi
+            
+            # First check if dependency is being built in current workflow
+            changed_images='${{ needs.detect-changes.outputs.images }}'
+              if echo "$changed_images" | grep -q "\"$dep\""; then
+                echo "   🔄 Dependency $dep is being built in current workflow"
+                
+                # Wait for dependency job to complete AND push to registry
+                max_wait=1800  # 30 minutes
+                wait_interval=30
+                elapsed=0
+                
+                while [ $elapsed -lt $max_wait ]; do
+                  echo "   🔍 Checking workflow jobs status... (${elapsed}s elapsed)"
+                  
+                  # Get current workflow run jobs
+                  jobs_response=$(curl -s \
+                    -H "Authorization: Bearer $GITHUB_TOKEN" \
+                    -H "Accept: application/vnd.github.v3+json" \
+                    "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
+                  
+                  # Debug: Show all job names
+                  if [ $elapsed -eq 0 ]; then
+                    echo "   🔍 Available jobs in this workflow:"
+                    echo "$jobs_response" | jq -r '.jobs[].name' | sed 's/^/     - /'
+                  fi
+                  
+                  # Check if dependency build job completed successfully
+                  dep_job_status=$(echo "$jobs_response" | jq -r --arg dep "$dep" '
+                    .jobs[] | 
+                    select(.name | test("build-and-push \\(.+ / " + $dep + "\\)")) | 
+                    .status + ":" + (.conclusion // "null")')
+                  
+                  if [ -z "$dep_job_status" ]; then
+                    # Alternative: try simpler job name matching
+                    dep_job_status=$(echo "$jobs_response" | jq -r --arg dep "$dep" '
+                      .jobs[] | 
+                      select(.name | contains($dep)) | 
+                      select(.name | contains("build-and-push")) |
+                      .status + ":" + (.conclusion // "null")' | head -1)
+                  fi
+                  
+                  echo "   📊 Job status for $dep: $dep_job_status"
+                  
+                  case "$dep_job_status" in
+                    "completed:success")
+                      echo "   ✅ Dependency $dep build completed successfully!"
+                      echo "   🔄 Waiting additional 60s for registry sync..."
+                      sleep 60
+                      
+                      # Verify image is available in registry
+                      echo "   🔍 Verifying $dep:latest is available in registry..."
+                      max_registry_wait=300  # 5 minutes for registry sync
+                      registry_elapsed=0
+                      registry_interval=15
+                      
+                      while [ $registry_elapsed -lt $max_registry_wait ]; do
+                        response=$(curl -s -w "%{http_code}" \
+                          -H "Authorization: Bearer $GITHUB_TOKEN" \
+                          -H "Accept: application/vnd.github.v3+json" \
+                          "https://api.github.com/user/packages/container/$dep/versions" 2>/dev/null)
+                        
+                        http_code="${response: -3}"
+                        response_body="${response%???}"
+                        
+                        if [ "$http_code" = "200" ]; then
+                          if echo "$response_body" | jq -r '.[].metadata.container.tags[]?' 2>/dev/null | grep -q "^latest$"; then
+                            echo "   ✅ $dep:latest is available in registry!"
+                            break 2  # Break out of both loops
+                          fi
+                        fi
+                        
+                        echo "   ⏳ Registry sync pending... (${registry_elapsed}s)"
+                        sleep $registry_interval
+                        registry_elapsed=$((registry_elapsed + registry_interval))
+                      done
+                      
+                      if [ $registry_elapsed -ge $max_registry_wait ]; then
+                        echo "   ⚠️  Registry sync timeout, proceeding anyway..."
+                        break
+                      fi
+                      ;;
+                    "completed:failure"|"completed:cancelled"|"completed:skipped")
+                      echo "❌ Dependency $dep build failed: $dep_job_status"
+                      exit 1
+                      ;;
+                    "in_progress:null"|"queued:null")
+                      echo "   ⏳ Dependency $dep build still in progress..."
+                      ;;
+                    "")
+                      echo "   ⏳ Dependency $dep build job not found yet..."
+                      ;;
+                    *)
+                      echo "   ❓ Unknown status for $dep: $dep_job_status"
+                      ;;
+                  esac
+                  
+                  sleep $wait_interval
+                  elapsed=$((elapsed + wait_interval))
+                done              # Check if we timed out
+              if [ $elapsed -ge $max_wait ]; then
+                echo "❌ Timeout waiting for dependency $dep build to complete"
+                exit 1
+              fi
+              
+            else
+              echo "   📦 Dependency $dep not being built in current workflow, checking registry..."
+              
+              # Check if dependency image exists in GHCR
+              response=$(curl -s -w "%{http_code}" \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/user/packages/container/$dep/versions" 2>/dev/null)
+              
+              http_code="${response: -3}"
+              response_body="${response%???}"
+              
+              case "$http_code" in
+                200)
+                  if echo "$response_body" | jq -r '.[].metadata.container.tags[]?' 2>/dev/null | grep -q "^$required_version$"; then
+                    echo "   ✅ Dependency $dep:$required_version is available in registry!"
+                  else
+                    echo "❌ Required version $required_version not found in registry for $dep"
+                    exit 1
+                  fi
+                  ;;
+                404)
+                  echo "❌ Package $dep not found in registry (HTTP 404)"
+                  exit 1
+                  ;;
+                *)
+                  echo "❌ API error (HTTP $http_code) checking registry for $dep"
+                  exit 1
+                  ;;
+              esac
+            fi
+          done
+          
+          echo "✅ All dependencies satisfied for ${{ matrix.image }}"
 
       - name: Set up Docker Buildx
         if: steps.should_build.outputs.should_build == 'true'
@@ -293,14 +498,74 @@ jobs:
           echo "image_version=$version" >> $GITHUB_OUTPUT
           echo "repo_version=$repo_version" >> $GITHUB_OUTPUT
 
-          # Generate tags
-          tags="ghcr.io/${{ github.repository_owner }}/$image:latest"
-          tags="$tags,ghcr.io/${{ github.repository_owner }}/$image:$version"
-          # Note: Repository version tag removed to avoid confusion
-          # Each image uses only its own VERSION file for tagging
+          # Generate tags based on event type
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For PRs, use PR-specific tags to enable dependency building
+            pr_number="${{ github.event.number }}"
+            tags="ghcr.io/${{ github.repository_owner }}/$image:$version-pr$pr_number"
+            tags="$tags,ghcr.io/${{ github.repository_owner }}/$image:latest-pr$pr_number"
+            echo "Using PR-specific tags for testing dependencies"
+          else
+            # For main branch, use standard tags
+            tags="ghcr.io/${{ github.repository_owner }}/$image:latest"
+            tags="$tags,ghcr.io/${{ github.repository_owner }}/$image:$version"
+          fi
 
           echo "Generated tags: $tags"
           echo "tags=$tags" >> $GITHUB_OUTPUT
+
+      - name: Prepare build arguments
+        if: steps.should_build.outputs.should_build == 'true'
+        id: build_args
+        run: |
+          image="${{ matrix.image }}"
+          build_args=""
+          
+          # Handle dependencies by setting appropriate base image build args
+          dependencies='${{ toJSON(matrix.dependencies) }}'
+          if [ "$dependencies" != "[]" ] && [ "$dependencies" != "null" ]; then
+            echo "Setting up build args for dependencies..."
+            deps=$(echo "$dependencies" | jq -r '.[]')
+            
+            for dep in $deps; do
+              echo "Setting BASE_IMAGE for dependency $dep"
+              
+              # Check if dependency is being built in current workflow
+              changed_images='${{ needs.detect-changes.outputs.images }}'
+              if echo "$changed_images" | grep -q "\"$dep\""; then
+                # Use appropriate tag based on event type
+                if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+                  pr_number="${{ github.event.number }}"
+                  if [ -f "images/$dep/VERSION" ]; then
+                    dep_version=$(cat "images/$dep/VERSION")
+                    build_args="BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/$dep:$dep_version-pr$pr_number"
+                    echo "   Using PR-specific version tag: $build_args"
+                  else
+                    build_args="BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/$dep:latest-pr$pr_number"
+                    echo "   Using PR-specific latest tag: $build_args"
+                  fi
+                else
+                  # Main branch - use latest tag for workflow-internal dependencies
+                  build_args="BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/$dep:latest"
+                  echo "   Using latest tag (workflow-internal): $build_args"
+                fi
+              else
+                # Use specific version for external dependencies (not in current workflow)
+                if [ -f "images/$dep/VERSION" ]; then
+                  dep_version=$(cat "images/$dep/VERSION")
+                  build_args="BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/$dep:$dep_version"
+                  echo "   Using version tag (external): $build_args"
+                else
+                  build_args="BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/$dep:latest"
+                  echo "   Using latest tag (fallback): $build_args"
+                fi
+              fi
+              break  # Use first dependency as base image
+            done
+          fi
+          
+          echo "build_args=$build_args" >> $GITHUB_OUTPUT
+          echo "Final build args: $build_args"
 
       - name: Build and push Docker image
         if: steps.should_build.outputs.should_build == 'true'
@@ -309,8 +574,8 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.context }}/${{ matrix.dockerfile }}
           push: >-
-            ${{ github.event_name == 'push' &&
-            github.ref == 'refs/heads/main' }}
+            ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+                github.event_name == 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=${{ steps.meta.outputs.image_name }}
@@ -318,6 +583,7 @@ jobs:
             org.opencontainers.image.version=${{ steps.meta.outputs.image_version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          build-args: ${{ steps.build_args.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
         continue-on-error: false
@@ -362,6 +628,7 @@ jobs:
             | `heishamon-dev-pio` | HeishaMon development (PlatformIO) | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `arduino-cli` | Arduino CLI development environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `latex` | LaTeX/TeXLive environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
+            | `zephyr` | Zephyr RTOS development environment with pre-installed SDK | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
 
             ## 🚀 Usage
 
