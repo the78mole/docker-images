@@ -16,13 +16,14 @@ All images are available on GitHub Container Registry at `ghcr.io/the78mole/<ima
 
 | Image | Purpose | Size | Usage |
 |-------|---------|------|-------|
-| **`kicaddev`** | KiCad CLI tools & production automation | ~6.8GB | PCB design, Gerber export, documentation |
-| **`platformio`** | PlatformIO development environment | ~1.2GB | Microcontroller firmware development |
-| **`wordpress-smtp`** | WordPress with SMTP support | ~800MB | WordPress deployment with email |
-| **`heishamon-dev`** | HeishaMon development (Arduino CLI) | ~600MB | Arduino-based IoT development |
-| **`heishamon-dev-pio`** | HeishaMon development (PlatformIO) | ~1.5GB | PlatformIO-based IoT development |
-| **`arduino-cli`** | Arduino CLI development | ~400MB | Arduino project compilation |
-| **`latex`** | LaTeX/TeXLive environment | ~4.2GB | Document generation, academic papers |
+| **`kicaddev`** | KiCad CLI tools & production automation | ~2.4GB | PCB design, Gerber export, documentation |
+| **`platformio`** | PlatformIO development environment | ~0.3GB | Microcontroller firmware development |
+| **`zephyr`** | Zephyr RTOS development environment | ~7.2GB | RTOS firmware development, embedded systems |
+| **`wordpress-smtp`** | WordPress with SMTP support | ~0.2GB | WordPress deployment with email |
+| **`heishamon-dev`** | HeishaMon development (Arduino CLI) | ~2.3GB | Arduino-based IoT development |
+| **`heishamon-dev-pio`** | HeishaMon development (PlatformIO) | ~1.7GB | PlatformIO-based IoT development |
+| **`arduino-cli`** | Arduino CLI development | ~0.2GB | Arduino project compilation |
+| **`latex`** | LaTeX/TeXLive environment | ~2.1GB | Document generation, academic papers |
 
 ---
 
@@ -40,6 +41,11 @@ docker run --rm -v $(pwd):/workspace \
 docker run --rm -it -v $(pwd):/workspace \
   ghcr.io/the78mole/platformio:latest \
   pio run
+
+# Zephyr RTOS development
+docker run --rm -it -v $(pwd):/workspaces \
+  ghcr.io/the78mole/zephyr:latest \
+  west build -b qemu_x86 samples/hello_world
 
 # WordPress with SMTP
 docker run -d \
@@ -89,6 +95,7 @@ docker-images/
 │   │   ├── requirements.txt
 │   │   └── scripts/           # KiCad automation scripts
 │   ├── platformio/            # PlatformIO development
+│   ├── zephyr/                # Zephyr RTOS development
 │   ├── wordpress-smtp/        # WordPress + SMTP
 │   ├── heishamon-dev/         # HeishaMon development
 │   │   ├── Dockerfile         # Arduino CLI version
@@ -179,6 +186,34 @@ docker run --rm -v $(pwd):/workspace \
 docker run --rm -v $(pwd):/workspace \
   ghcr.io/the78mole/platformio:latest \
   pio run
+```
+
+### 🚀 Zephyr RTOS Development (`zephyr`)
+
+Complete Zephyr RTOS development environment for embedded systems.
+
+**Features:**
+- Ubuntu 24.04 LTS base
+- UV - Modern Python package and project manager  
+- West - Zephyr's meta-tool for managing repositories
+- Zephyr SDK 0.17.4 - Complete toolchain for all supported architectures
+- Pre-installed dependencies for immediate development
+
+**Usage:**
+```bash
+# Interactive development
+docker run --rm -it -v $(pwd):/workspaces \
+  ghcr.io/the78mole/zephyr:latest
+
+# Initialize workspace
+docker run --rm -v $(pwd):/workspaces \
+  ghcr.io/the78mole/zephyr:latest \
+  init-workspace.sh
+
+# Build sample application
+docker run --rm -v $(pwd):/workspaces \
+  ghcr.io/the78mole/zephyr:latest \
+  west build -b qemu_x86 samples/hello_world
 ```
 
 ### 📧 WordPress SMTP (`wordpress-smtp`)
