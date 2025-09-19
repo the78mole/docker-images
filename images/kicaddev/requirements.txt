@@ -14,5 +14,5 @@ InteractiveHtmlBom==2.10.0
 sphinx==8.2.3
 myst-parser==4.0.1
 sphinx-rtd-theme==3.0.2
-sphinx-autobuild==2024.10.3
+sphinx-autobuild==2025.8.25
 sphinxcontrib-napoleon==0.7
