@@ -274,27 +274,6 @@ jobs:
             dependencies: []
             spacefree: true
     steps:
-      - name: Free Disk Space (Ubuntu)
-        if: matrix.spacefree == true
-        uses: jlumbroso/free-disk-space@main
-        with:
-          # this might remove tools that are actually needed,
-          # if set to "true" but frees about 6 GB
-          tool-cache: false
-          
-          # all of these default to true, but feel free to set to
-          # "false" if necessary for your workflow
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      - name: Check disk space
-        if: matrix.spacefree == true
-        run: df -h
-
       - name: Checkout repository
         uses: actions/checkout@v5
 
@@ -316,6 +295,27 @@ jobs:
             echo "should_build=false" >> $GITHUB_OUTPUT
             echo "⏭️ Skipping $image (no changes in $source_image)"
           fi
+
+      - name: Free Disk Space (Ubuntu)
+        if: matrix.spacefree == true && steps.should_build.outputs.should_build == 'true'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+          
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Check disk space
+        if: matrix.spacefree == true && steps.should_build.outputs.should_build == 'true'
+        run: df -h
 
       - name: Wait for dependencies
         if: steps.should_build.outputs.should_build == 'true'
