@@ -1,0 +1,33 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: jumpstarter-server
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      # Ingress HTTP/HTTPS
+      - containerPort: 80
+        hostPort: 5080
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 5443
+        protocol: TCP
+      # Jumpstarter GRPC Services (NodePorts)
+      - containerPort: 30010
+        hostPort: 30010
+        protocol: TCP
+      - containerPort: 30011
+        hostPort: 30011
+        protocol: TCP
+      # Additional service ports
+      - containerPort: 8082
+        hostPort: 8082
+        protocol: TCP
+      - containerPort: 8083
+        hostPort: 8083
+        protocol: TCP

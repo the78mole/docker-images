@@ -1,0 +1,63 @@
+{
+    "name": "Jumpstarter Development Environment",
+    "image": "test-jumpstarter-dev:latest",
+    
+    "features": {},
+    
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-kubernetes-tools.vscode-kubernetes-tools", 
+                "ms-vscode.vscode-yaml",
+                "ms-vscode.vscode-json",
+                "redhat.vscode-xml"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/root/.local/bin/python",
+                "python.terminal.activateEnvironment": true,
+                "terminal.integrated.shell.linux": "/bin/bash"
+            }
+        }
+    },
+
+    "containerEnv": {
+        "WORKSPACE_DIR": "/workspace",
+        "KUBECONFIG": "/home/jumpstarter/.kube/config"
+    },
+
+    "mounts": [
+        "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+    ],
+
+    "forwardPorts": [
+        30010,
+        30011, 
+        5080,
+        8082,
+        8083
+    ],
+
+    "portsAttributes": {
+        "30010": {
+            "label": "Jumpstarter Controller gRPC",
+            "onAutoForward": "notify"
+        },
+        "30011": {
+            "label": "Jumpstarter Router gRPC", 
+            "onAutoForward": "notify"
+        },
+        "5080": {
+            "label": "HTTP Ingress",
+            "onAutoForward": "openPreview"
+        }
+    },
+
+    "privileged": true,
+    "init": true,
+
+    "postCreateCommand": ".devcontainer/init-devcontainer.sh",
+
+    "remoteUser": "vscode"
+}
