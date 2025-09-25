@@ -4,6 +4,14 @@ set -e
 echo "🚀 DevContainer Initialization"
 echo "=============================="
 
+# Add UV tools to PATH for vscode user
+if [ "$(whoami)" = "vscode" ]; then
+    export PATH="/home/vscode/.local/bin:$PATH"
+    echo "export PATH=\"/home/vscode/.local/bin:\$PATH\"" >> ~/.bashrc
+    echo "export PATH=\"/home/vscode/.local/bin:\$PATH\"" >> ~/.zshrc 2>/dev/null || true
+    echo "🔧 Updated PATH to include UV tools directory"
+fi
+
 # Check if running as vscode user in DevContainer
 if [ "$(whoami)" = "vscode" ] && [ -n "${REMOTE_CONTAINERS}" ]; then
     echo "📦 DevContainer detected, initializing Docker daemon..."
