@@ -492,9 +492,6 @@ jobs:
       - name: Set up Docker Buildx
         if: steps.should_build.outputs.should_build == 'true'
         uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker
-          install: false
 
       - name: Log in to GitHub Container Registry
         if: steps.should_build.outputs.should_build == 'true'
