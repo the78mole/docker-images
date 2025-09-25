@@ -67,9 +67,11 @@ RUN curl -Lo ./k9s.tar.gz https://github.com/derailed/k9s/releases/latest/downlo
     && mv k9s /usr/local/bin/k9s \
     && rm k9s.tar.gz
 
-# Install UV (fast Python package manager)
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+# Install UV (fast Python package manager) - system-wide installation
+RUN curl -LsSf https://astral.sh/uv/install.sh | env INSTALLER_NO_MODIFY_PATH=1 sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
+    && mv /root/.local/bin/uvx /usr/local/bin/uvx \
+    && chmod +x /usr/local/bin/uv /usr/local/bin/uvx
 
 # Install Robot Framework and dependencies globally
 RUN pip3 install --no-cache-dir --break-system-packages \
@@ -112,6 +114,7 @@ RUN echo '#!/bin/bash\nset -e\n\necho "🚀 Jumpstarter Development Environment"
 # Set environment variables
 ENV WORKSPACE_DIR=/workspace
 ENV KUBECONFIG=/home/jumpstarter/.kube/config
+ENV PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/home/vscode/.local/bin:/root/.local/bin"
 
 # Define volumes for data persistence
 VOLUME ["/workspace", "/var/lib/docker"]

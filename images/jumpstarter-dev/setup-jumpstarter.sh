@@ -198,7 +198,10 @@ if command -v uv >/dev/null 2>&1; then
         uv sync 2>/dev/null || print_warning "UV sync completed with warnings"
         
         print_info "Installing Jumpstarter CLI dependencies..."
-        uv pip install jumpstarter-cli jumpstarter-driver-opendal jumpstarter-driver-power jumpstarter-driver-composite 2>/dev/null || print_warning "Some dependencies may need manual installation"
+        uv pip install jumpstarter-driver-opendal jumpstarter-driver-power jumpstarter-driver-composite 2>/dev/null || print_warning "Some dependencies may need manual installation"
+        
+        print_info "Installing Jumpstarter CLI tool..."
+        uv tool install jumpstarter-cli 2>/dev/null || print_warning "jumpstarter-cli tool installation may need manual setup"
     fi
     print_success "Python environment configured"
 else
@@ -237,12 +240,12 @@ echo "📋 Next Steps:"
 echo "  1. Check pod status: kubectl get pods -n jumpstarter-lab"
 echo "  2. View logs: kubectl logs -n jumpstarter-lab -l app.kubernetes.io/name=jumpstarter-controller"
 echo "  3. Use k9s dashboard: k9s -n jumpstarter-lab"
-echo "  4. Create exporter: uv run jmp admin create exporter test-exporter"
+echo "  4. Create exporter: jmp admin create exporter test-exporter"
 echo ""
 echo "🐍 Python CLI Usage:"
-echo "  uv run jmp --help"
-echo "  uv run jmp admin --help"
-echo "  uv run jmp admin get --help"
+echo "  jmp --help"
+echo "  jmp admin --help"
+echo "  jmp admin get --help"
 echo ""
 echo "🔧 Troubleshooting:"
 echo "  If services are not accessible, check NodePort mappings:"
