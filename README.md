@@ -24,6 +24,7 @@ All images are available on GitHub Container Registry at `ghcr.io/the78mole/<ima
 | **`heishamon-dev-pio`** | HeishaMon development (PlatformIO) | ~1.7GB | PlatformIO-based IoT development |
 | **`arduino-cli`** | Arduino CLI development | ~0.2GB | Arduino project compilation |
 | **`latex`** | LaTeX/TeXLive environment | ~2.1GB | Document generation, academic papers |
+| **`jumpstarter-dev`** | Complete Jumpstarter development environment | ~3.2GB | Kind cluster, Docker-in-Docker, Robot Framework |
 
 ---
 
@@ -63,6 +64,11 @@ docker run --rm -v $(pwd):/workspace \
 docker run --rm -v $(pwd):/workspace \
   ghcr.io/the78mole/latex:latest \
   pdflatex document.tex
+
+# Jumpstarter development - complete setup
+docker run --privileged -p 30010:30010 -p 30011:30011 -it \
+  ghcr.io/the78mole/jumpstarter-dev:latest \
+  setup-jumpstarter.sh
 ```
 
 ### Development Containers (VS Code)
@@ -290,6 +296,97 @@ docker run --rm -v $(pwd):/workspace \
 docker run --rm -v $(pwd):/workspace \
   ghcr.io/the78mole/latex:latest \
   latexmk -pdf document.tex
+```
+
+### 🚀 Jumpstarter Development (`jumpstarter-dev`)
+
+Complete Jumpstarter development environment with Docker-in-Docker, Kubernetes, and all necessary tools pre-installed.
+
+**Features:**
+- Docker-in-Docker for isolated development
+- Kind (Kubernetes in Docker) v0.20.0 with optimized configuration
+- Automatic Jumpstarter installation via Helm
+- Pre-installed tools: kubectl, Helm, k9s, UV package manager
+- Python 3.11 with Robot Framework for testing
+- Direct localhost access to all services via NodePorts
+
+**Architecture:**
+- **Kind Cluster** - Local Kubernetes cluster for development
+- **NodePorts** - GRPC services exposed on localhost:30010, localhost:30011
+- **Docker-in-Docker** - Proper container isolation with privileged mode
+- **UV Package Manager** - Modern Python dependency management
+- **Automatic Setup** - One-command deployment of complete stack
+
+**Usage:**
+```bash
+# Complete Jumpstarter setup (recommended)
+docker run --privileged -p 30010:30010 -p 30011:30011 -it \
+  ghcr.io/the78mole/jumpstarter-dev:latest \
+  setup-jumpstarter.sh
+
+# Interactive development
+docker run --privileged -p 30010:30010 -p 30011:30011 -it \
+  ghcr.io/the78mole/jumpstarter-dev:latest
+
+# With workspace mount
+docker run --privileged -p 30010:30010 -p 30011:30011 \
+  -v $(pwd):/workspace/project -it \
+  ghcr.io/the78mole/jumpstarter-dev:latest
+
+# Check services after setup
+docker run --privileged -it ghcr.io/the78mole/jumpstarter-dev:latest \
+  bash -c "setup-jumpstarter.sh && kubectl get pods -n jumpstarter-lab && k9s -n jumpstarter-lab"
+```
+
+**Available Commands:**
+- `setup-jumpstarter.sh` - Complete Jumpstarter setup with Kind + Helm
+- `kubectl get nodes` - Check cluster status
+- `k9s` - Interactive Kubernetes dashboard
+- `uv run jmp --help` - Jumpstarter CLI commands
+- `uv run jmp admin create exporter <name>` - Create new exporter
+
+**Service Access:**
+- **GRPC Controller**: localhost:30010 (NodePort)
+- **GRPC Router**: localhost:30011 (NodePort)
+- **HTTP Ingress**: localhost:5080
+- **Kubernetes Dashboard**: Run `k9s` in container
+
+**Docker Compose Example:**
+```yaml
+version: '3.8'
+services:
+  jumpstarter-dev:
+    image: ghcr.io/the78mole/jumpstarter-dev:latest
+    privileged: true
+    ports:
+      - "30010:30010"  # GRPC Controller
+      - "30011:30011"  # GRPC Router
+      - "5080:5080"    # HTTP Ingress
+    volumes:
+      - jumpstarter-data:/workspace
+    command: setup-jumpstarter.sh
+volumes:
+  jumpstarter-data:
+```
+
+**Development Workflow:**
+1. Start container: `docker run --privileged -p 30010:30010 -p 30011:30011 -it ghcr.io/the78mole/jumpstarter-dev:latest`
+2. Run setup: `setup-jumpstarter.sh`
+3. Verify services: `kubectl get pods -n jumpstarter-lab`
+4. Create exporter: `uv run jmp admin create exporter test-exporter --save --insecure-tls-config`
+5. Access dashboard: `k9s -n jumpstarter-lab`
+
+**DevContainer Support:**
+This image is fully compatible with VS Code DevContainers. Create `.devcontainer/devcontainer.json`:
+```json
+{
+    "name": "Jumpstarter Development",
+    "image": "ghcr.io/the78mole/jumpstarter-dev:latest",
+    "privileged": true,
+    "forwardPorts": [30010, 30011, 5080],
+    "postCreateCommand": "setup-jumpstarter.sh",
+    "remoteUser": "vscode"
+}
 ```
 
 ---
