@@ -22,7 +22,7 @@ jobs:
       repository-version: ${{ steps.semver.outputs.version_tag }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -174,7 +174,7 @@ jobs:
         image: ${{ fromJSON(needs.detect-changes.outputs.images) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -280,7 +280,7 @@ jobs:
             spacefree: true
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Check if image should be built
         id: should_build
@@ -628,7 +628,7 @@ jobs:
       needs.detect-changes.outputs.images != ''
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
