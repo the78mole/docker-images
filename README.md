@@ -16,15 +16,17 @@ All images are available on GitHub Container Registry at `ghcr.io/the78mole/<ima
 
 | Image | Purpose | Size | Usage |
 |-------|---------|------|-------|
-| **`kicaddev`** | KiCad CLI tools & production automation | ~2.4GB | PCB design, Gerber export, documentation |
-| **`platformio`** | PlatformIO development environment | ~0.3GB | Microcontroller firmware development |
-| **`zephyr`** | Zephyr RTOS development environment | ~7.2GB | RTOS firmware development, embedded systems |
-| **`wordpress-smtp`** | WordPress with SMTP support | ~0.2GB | WordPress deployment with email |
-| **`heishamon-dev`** | HeishaMon development (Arduino CLI) | ~2.3GB | Arduino-based IoT development |
+| **`kicaddev`** | KiCad CLI tools & production automation | ~9.6GB | PCB design, Gerber export, documentation |
+| **`platformio`** | PlatformIO development environment | ~729MB | Microcontroller firmware development |
+| **`zephyr`** | Zephyr RTOS development environment | ~21.5GB | RTOS firmware development, embedded systems |
+| **`wordpress-smtp`** | WordPress with SMTP support | ~740MB | WordPress deployment with email |
+| **`heishamon-dev`** | HeishaMon development (Arduino CLI) | ~5.44GB | Arduino-based IoT development |
 | **`heishamon-dev-pio`** | HeishaMon development (PlatformIO) | ~1.7GB | PlatformIO-based IoT development |
-| **`arduino-cli`** | Arduino CLI development | ~0.2GB | Arduino project compilation |
-| **`latex`** | LaTeX/TeXLive environment | ~2.1GB | Document generation, academic papers |
-| **`jumpstarter-dev`** | Complete Jumpstarter development environment | ~3.2GB | Kind cluster, Docker-in-Docker, Robot Framework |
+| **`arduino-cli`** | Arduino CLI development | ~587MB | Arduino project compilation |
+| **`latex`** | LaTeX/TeXLive environment | ~4.8GB | Document generation, academic papers |
+| **`latex-node`** | LaTeX + Node.js development | ~7.99GB | Document generation with JavaScript tooling |
+| **`nrfconnectsdk`** | Nordic nRF Connect SDK development | ~761MB | nRF microcontroller firmware, Zephyr RTOS |
+| **`jumpstarter-dev`** | Complete Jumpstarter development environment | ~1.58GB | Kind cluster, Docker-in-Docker, Robot Framework |
 
 ---
 
@@ -64,6 +66,15 @@ docker run --rm -v $(pwd):/workspace \
 docker run --rm -v $(pwd):/workspace \
   ghcr.io/the78mole/latex:latest \
   pdflatex document.tex
+
+# LaTeX + Node.js development
+docker run --rm -it -v $(pwd):/workspace \
+  ghcr.io/the78mole/latex-node:latest
+
+# nRF Connect SDK development
+docker run --rm -it -v $(pwd):/workspace \
+  --device /dev/ttyACM0:/dev/ttyACM0 \
+  ghcr.io/the78mole/nrfconnectsdk:latest
 
 # Jumpstarter development - complete setup
 docker run --privileged -p 30010:30010 -p 30011:30011 -it \
@@ -298,7 +309,55 @@ docker run --rm -v $(pwd):/workspace \
   latexmk -pdf document.tex
 ```
 
-### 🚀 Jumpstarter Development (`jumpstarter-dev`)
+### 📄📜 LaTeX + Node.js Environment (`latex-node`)
+
+Combined LaTeX and Node.js environment for modern documentation workflows with JavaScript tooling.
+
+**Features:**
+- Complete TeXLive distribution
+- Node.js LTS with npm
+- Document generation tools (Mermaid, markdown-pdf, reveal-md)
+- TypeScript support
+- Browser automation (Playwright)
+
+**Usage:**
+```bash
+# LaTeX + Node.js development
+docker run --rm -it -v $(pwd):/workspace \
+  ghcr.io/the78mole/latex-node:latest
+
+# Inside container:
+# pdflatex document.tex && npm run build
+# mmdc -i diagram.mmd -o diagram.png
+# reveal-md slides.md --theme sky
+```
+
+### 📱 Nordic nRF Connect SDK (`nrfconnectsdk`)
+
+Complete development environment for Nordic nRF microcontrollers using the nRF Connect SDK.
+
+**Features:**
+- nRF Connect SDK with Zephyr RTOS
+- nrfutil command-line tools
+- Pre-installed VS Code extensions for nRF development
+- Zephyr SDK v0.16.1
+- West meta tool for project management
+- GDB and OpenOCD for debugging
+
+**Usage:**
+```bash
+# Initialize nRF project
+docker run --rm -it -v $(pwd):/workspace \
+  --device /dev/ttyACM0:/dev/ttyACM0 \
+  ghcr.io/the78mole/nrfconnectsdk:latest
+
+# Inside container:
+# west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.4.0 myapp
+# west update
+# west build -b nrf52840dk_nrf52840 samples/basic/blinky
+```
+
+### �🚀 Jumpstarter Development Environment (`jumpstarter-dev`)
 
 Complete Jumpstarter development environment with Docker-in-Docker, Kubernetes, and all necessary tools pre-installed.
 
