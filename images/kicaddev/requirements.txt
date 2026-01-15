@@ -1,7 +1,7 @@
 # KiCad Production Tools and Extensions
 matplotlib==3.10.8
 pillow==9.5.0
-reportlab==4.4.7
+reportlab==4.4.9
 
 # KiCad and PCB Tools
 kikit==1.7.2
