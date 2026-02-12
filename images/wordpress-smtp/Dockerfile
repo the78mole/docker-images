@@ -1,4 +1,4 @@
-FROM wordpress:6.9.0-apache
+FROM wordpress:6.9.1-apache
 
 # Install msmtp, ca-certificates and PHP MySQL extension
 RUN apt-get update && \
