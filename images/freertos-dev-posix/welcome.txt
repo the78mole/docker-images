@@ -1,0 +1,43 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              FreeRTOS POSIX Development Container                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🔧 USEFUL COMMANDS
+────────────────────────────────────────────────────────────────────────────────
+
+  Build with Make:
+    $ make
+
+  Build with CMake:
+    $ mkdir -p build && cd build
+    $ cmake .. -DFREERTOS_KERNEL_PATH=/workspace/FreeRTOS-Kernel \
+               -DFREERTOS_PLUS_TCP_PATH=/workspace/FreeRTOS-Plus-TCP \
+               -DFREERTOS_PORT=GCC/Posix
+    $ make
+
+  Debug with GDB:
+    $ gdb ./your_application
+
+  Run application:
+    $ ./your_application
+
+
+📚 ENVIRONMENT VARIABLES
+────────────────────────────────────────────────────────────────────────────────
+
+  FREERTOS_PATH=/workspace/FreeRTOS-Kernel
+  FREERTOS_TCP_PATH=/workspace/FreeRTOS-Plus-TCP
+  FREERTOS_PORT=GCC/Posix
+
+
+📂 RECOMMENDED PROJECT STRUCTURE
+────────────────────────────────────────────────────────────────────────────────
+
+  Clone FreeRTOS sources to /workspace:
+    $ git clone https://github.com/FreeRTOS/FreeRTOS-Kernel.git /workspace/FreeRTOS-Kernel
+    $ git clone https://github.com/FreeRTOS/FreeRTOS-Plus-TCP.git /workspace/FreeRTOS-Plus-TCP
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         Happy Coding! 🚀                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
