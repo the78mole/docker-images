@@ -48,8 +48,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get list of all images
-          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr jumpstarter-dev)
-          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "jumpstarter-dev"]'          # Function to check if package version exists in GHCR
+          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr jumpstarter-dev freertos-dev-posix)
+          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "jumpstarter-dev", "freertos-dev-posix"]'          # Function to check if package version exists in GHCR
           check_package_exists() {
             local image=$1
             local version=$2
@@ -278,6 +278,11 @@ jobs:
             context: images/jumpstarter-dev
             dependencies: []
             spacefree: true
+          - image: freertos-dev-posix
+            dockerfile: Dockerfile
+            context: images/freertos-dev-posix
+            dependencies: []
+            spacefree: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -657,6 +662,7 @@ jobs:
             | `latex` | LaTeX/TeXLive environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `zephyr` | Zephyr RTOS development environment with pre-installed SDK | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `jumpstarter-dev` | Complete Jumpstarter development environment with Kind, Docker-in-Docker | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
+            | `freertos-dev-posix` | FreeRTOS POSIX/Linux simulator development environment with NTP testing capabilities | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
 
             ## 🚀 Usage
 

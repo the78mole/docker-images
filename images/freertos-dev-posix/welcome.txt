@@ -1,0 +1,78 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ ⌚⌚⌚⌚⌚        FreeRTOS POSIX Development Container         ⌚⌚⌚⌚⌚ ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📋 START CHRONY NTP SERVER
+────────────────────────────────────────────────────────────────────────────────
+
+  Start Chrony server:
+    $ start-chrony.sh
+
+  Check server status:
+    $ chronyc tracking
+    $ chronyc sources
+
+  Server runs on: localhost:123 (UDP)
+
+
+⚙️  FREERTOS NTP CLIENT CONFIGURATION
+────────────────────────────────────────────────────────────────────────────────
+
+  In your FreeRTOS application:
+
+  1. Set NTP server address:
+     
+     NTPTaskConfig_t xNTPConfig = {
+         .pcNTPServer = "127.0.0.1",  // Local Chrony server
+         .usNTPPort = 123,
+         // ... additional configuration
+     };
+
+  2. Or use hostname:
+     
+     .pcNTPServer = "localhost",
+
+  3. For external tests (pool servers):
+     
+     .pcNTPServer = "pool.ntp.org",
+
+
+🔧 USEFUL COMMANDS
+────────────────────────────────────────────────────────────────────────────────
+
+  Build with Make:
+    $ make
+
+  Build with CMake:
+    $ mkdir -p build && cd build
+    $ cmake .. -DFREERTOS_KERNEL_PATH=/workspace/FreeRTOS-Kernel \
+               -DFREERTOS_PLUS_TCP_PATH=/workspace/FreeRTOS-Plus-TCP \
+               -DFREERTOS_PORT=GCC/Posix
+    $ make
+
+  Debug with GDB:
+    $ gdb ./your_application
+
+  Test NTP query:
+    $ sudo apt-get install -y ntpdate
+    $ ntpdate -q localhost
+
+
+📚 ENVIRONMENT VARIABLES
+────────────────────────────────────────────────────────────────────────────────
+
+  FREERTOS_PATH=/workspace/FreeRTOS-Kernel
+  FREERTOS_TCP_PATH=/workspace/FreeRTOS-Plus-TCP
+  FREERTOS_PORT=GCC/Posix
+
+
+📂 RECOMMENDED PROJECT STRUCTURE
+────────────────────────────────────────────────────────────────────────────────
+
+  Clone FreeRTOS sources to /workspace:
+    $ git clone https://github.com/FreeRTOS/FreeRTOS-Kernel.git /workspace/FreeRTOS-Kernel
+    $ git clone https://github.com/FreeRTOS/FreeRTOS-Plus-TCP.git /workspace/FreeRTOS-Plus-TCP
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         Happy Coding! 🚀                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
