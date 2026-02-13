@@ -6,42 +6,79 @@
   ],
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "📦 Renovate Dependency Dashboard",
-  "dependencyDashboardLabels": ["dependencies"],
-  "assignees": ["the78mole"],
-  "reviewers": ["the78mole"],
+  "dependencyDashboardLabels": [
+    "dependencies"
+  ],
+  "assignees": [
+    "the78mole"
+  ],
+  "reviewers": [
+    "the78mole"
+  ],
   "timezone": "Europe/Berlin",
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "packageRules": [
     {
-      "matchManagers": ["github-actions"],
-      "addLabels": ["github-actions"]
+      "matchManagers": [
+        "github-actions"
+      ],
+      "addLabels": [
+        "github-actions"
+      ]
     },
     {
-      "matchManagers": ["npm"],
-      "addLabels": ["npm"]
+      "matchManagers": [
+        "npm"
+      ],
+      "addLabels": [
+        "npm"
+      ]
     },
     {
-      "matchDatasources": ["docker"],
-      "addLabels": ["docker"]
+      "matchDatasources": [
+        "docker"
+      ],
+      "addLabels": [
+        "docker"
+      ]
     },
     {
-      "matchManagers": ["dockerfile"],
-      "addLabels": ["dockerfile"]
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "addLabels": [
+        "dockerfile"
+      ]
     },
     {
-      "matchFileNames": ["images/*/Dockerfile*"],
-      "addLabels": ["docker-images"]
+      "matchFileNames": [
+        "images/*/Dockerfile*"
+      ],
+      "addLabels": [
+        "docker-images"
+      ]
     },
     {
-      "matchFileNames": ["images/kicaddev/requirements.txt"],
-      "addLabels": ["kicaddev", "python"]
+      "matchFileNames": [
+        "images/kicaddev/requirements.txt"
+      ],
+      "addLabels": [
+        "kicaddev",
+        "python"
+      ]
     }
   ],
   "dockerfile": {
-    "fileMatch": ["images/.+/Dockerfile[^/]*$"]
+    "managerFilePatterns": [
+      "/images/.+/Dockerfile[^/]*$/"
+    ]
   },
   "pip_requirements": {
-    "fileMatch": ["images/.+/requirements\\.txt$"]
+    "managerFilePatterns": [
+      "/images/.+/requirements\\.txt$/"
+    ]
   },
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
@@ -49,11 +86,19 @@
   "rebaseWhen": "conflicted",
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 6am on monday"]
+    "schedule": [
+      "before 6am on monday"
+    ]
   },
   "vulnerabilityAlerts": {
-    "labels": ["security"],
-    "assignees": ["the78mole"],
-    "reviewers": ["the78mole"]
+    "labels": [
+      "security"
+    ],
+    "assignees": [
+      "the78mole"
+    ],
+    "reviewers": [
+      "the78mole"
+    ]
   }
 }
