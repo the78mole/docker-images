@@ -662,7 +662,7 @@ jobs:
             | `latex` | LaTeX/TeXLive environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `zephyr` | Zephyr RTOS development environment with pre-installed SDK | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
             | `jumpstarter-dev` | Complete Jumpstarter development environment with Kind, Docker-in-Docker | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
-            | `freertos-dev-posix` | FreeRTOS POSIX/Linux simulator development environment with NTP testing capabilities | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
+            | `freertos-dev-posix` | FreeRTOS POSIX/Linux simulator development environment | `latest`, `${{ needs.detect-changes.outputs.repository-version }}` |
 
             ## 🚀 Usage
 

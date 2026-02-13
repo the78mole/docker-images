@@ -26,8 +26,7 @@ RUN apt-get update && apt-get install -y \
     # Debugging and analysis tools
     valgrind \
     strace \
-    # Network tools for NTP testing
-    chrony \
+    # Network tools
     net-tools \
     iputils-ping \
     iproute2 \
@@ -57,13 +56,6 @@ RUN userdel -r ubuntu 2>/dev/null || true \
 RUN mkdir -p /workspace/FreeRTOS-Kernel \
     && mkdir -p /workspace/FreeRTOS-Plus-TCP \
     && chown -R $USERNAME:$USERNAME /workspace
-
-# Copy chrony configuration
-COPY chrony.conf /etc/chrony/chrony.conf
-
-# Copy startup script
-COPY start-chrony.sh /usr/local/bin/start-chrony.sh
-RUN chmod +x /usr/local/bin/start-chrony.sh
 
 # Copy welcome message
 COPY welcome.txt /home/$USERNAME/welcome.txt

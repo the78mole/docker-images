@@ -1,6 +1,6 @@
 # FreeRTOS POSIX Development Image
 
-This Docker image provides a complete development environment for FreeRTOS applications using the POSIX/Linux simulator port. It's specifically designed for use as a **DevContainer** in VS Code and includes tools for developing and testing FreeRTOS-based middleware and system tasks.
+This Docker image provides a complete development environment for FreeRTOS applications using the POSIX/Linux simulator port. It's specifically designed for use as a **DevContainer** in VS Code and includes tools for developing and testing FreeRTOS-based applications on x86 Linux.
 
 ## Features
 
@@ -17,9 +17,8 @@ This Docker image provides a complete development environment for FreeRTOS appli
   - `FREERTOS_TCP_PATH=/workspace/FreeRTOS-Plus-TCP`
   - `FREERTOS_PORT=GCC/Posix`
 
-### Network Testing
-- **Chrony NTP Server** - For testing NTP client implementations
-- **Network Tools** - net-tools, iputils-ping, iproute2, curl, tcpdump
+### Network Tools
+- **Network Utilities** - net-tools, iputils-ping, iproute2, curl, tcpdump
 - **SSL/TLS Libraries** - libssl-dev, libmbedtls-dev
 
 ### Development Tools
@@ -39,12 +38,6 @@ Create a `.devcontainer/devcontainer.json` in your project:
     "name": "FreeRTOS Development",
     "image": "ghcr.io/the78mole/freertos-dev-posix:latest",
     
-    "runArgs": [
-        "--cap-add=SYS_TIME",
-        "--cap-add=NET_ADMIN",
-        "--cap-add=NET_RAW"
-    ],
-    
     "remoteUser": "vscode",
     
     "postCreateCommand": "echo 'Welcome to FreeRTOS Development!' && cat /home/vscode/welcome.txt"
@@ -57,29 +50,10 @@ Create a `.devcontainer/devcontainer.json` in your project:
 # Pull the image
 docker pull ghcr.io/the78mole/freertos-dev-posix:latest
 
-# Run interactively with network capabilities
+# Run interactively
 docker run -it --rm \
-    --cap-add=SYS_TIME \
-    --cap-add=NET_ADMIN \
     -v $(pwd):/workspaces/project \
     ghcr.io/the78mole/freertos-dev-posix:latest
-```
-
-## NTP Server Setup
-
-The image includes Chrony NTP server for testing NTP client implementations:
-
-```bash
-# Start the NTP server
-start-chrony.sh
-
-# Check server status
-chronyc tracking
-chronyc sources
-
-# Test NTP query (requires ntpdate)
-sudo apt-get install -y ntpdate
-ntpdate -q localhost
 ```
 
 ## Building FreeRTOS Applications
@@ -106,21 +80,13 @@ cmake .. \
 make
 ```
 
-## Required Capabilities
-
-For NTP functionality and time manipulation, the container needs these capabilities:
-
-- `--cap-add=SYS_TIME` - Allows setting system time
-- `--cap-add=NET_ADMIN` - Network administration (optional, for advanced networking)
-- `--cap-add=NET_RAW` - Raw socket access (optional, for packet capture)
-
 ## Use Cases
 
 This image is ideal for:
 
 1. **Middleware Development** - Develop and test FreeRTOS middleware components on x86 before deploying to embedded hardware
-2. **NTP Client Testing** - Test NTP synchronization tasks against a local NTP server
-3. **System Task Development** - Develop system-level tasks (logging, networking, etc.) with full debugging capabilities
+2. **Task Development** - Develop and test individual FreeRTOS tasks with full debugging capabilities
+3. **Algorithm Testing** - Test algorithms and logic in a familiar Linux environment
 4. **Continuous Integration** - Run FreeRTOS application tests in CI/CD pipelines
 5. **Education** - Learn FreeRTOS concepts without embedded hardware
 
@@ -139,13 +105,13 @@ This image is ideal for:
 - build-essential, gcc, g++, make, cmake, ninja-build, gdb, git
 - libc6-dev, libssl-dev, libmbedtls-dev
 - valgrind, strace
-- chrony, net-tools, iputils-ping, iproute2, curl, tcpdump
+- net-tools, iputils-ping, iproute2, curl, tcpdump
 - vim, nano, wget, tree, htop, sudo, ca-certificates
 - python3, python3-pip
 
 ## Version
 
-Current version: 1.0.0
+Current version: 1.1.0
 
 ## Base Image
 
@@ -160,3 +126,4 @@ This image configuration is provided as-is for use in the docker-images reposito
 - [FreeRTOS Official Site](https://www.freertos.org/)
 - [FreeRTOS POSIX Port Documentation](https://www.freertos.org/FreeRTOS-simulator-for-Linux.html)
 - [FreeRTOS GitHub Repository](https://github.com/FreeRTOS/FreeRTOS-Kernel)
+

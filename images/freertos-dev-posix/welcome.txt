@@ -1,41 +1,6 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║ ⌚⌚⌚⌚⌚        FreeRTOS POSIX Development Container         ⌚⌚⌚⌚⌚ ║
+║              FreeRTOS POSIX Development Container                            ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
-
-📋 START CHRONY NTP SERVER
-────────────────────────────────────────────────────────────────────────────────
-
-  Start Chrony server:
-    $ start-chrony.sh
-
-  Check server status:
-    $ chronyc tracking
-    $ chronyc sources
-
-  Server runs on: localhost:123 (UDP)
-
-
-⚙️  FREERTOS NTP CLIENT CONFIGURATION
-────────────────────────────────────────────────────────────────────────────────
-
-  In your FreeRTOS application:
-
-  1. Set NTP server address:
-     
-     NTPTaskConfig_t xNTPConfig = {
-         .pcNTPServer = "127.0.0.1",  // Local Chrony server
-         .usNTPPort = 123,
-         // ... additional configuration
-     };
-
-  2. Or use hostname:
-     
-     .pcNTPServer = "localhost",
-
-  3. For external tests (pool servers):
-     
-     .pcNTPServer = "pool.ntp.org",
-
 
 🔧 USEFUL COMMANDS
 ────────────────────────────────────────────────────────────────────────────────
@@ -53,9 +18,8 @@
   Debug with GDB:
     $ gdb ./your_application
 
-  Test NTP query:
-    $ sudo apt-get install -y ntpdate
-    $ ntpdate -q localhost
+  Run application:
+    $ ./your_application
 
 
 📚 ENVIRONMENT VARIABLES
@@ -76,3 +40,4 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                         Happy Coding! 🚀                                     ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
+
