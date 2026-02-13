@@ -11,39 +11,18 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Update and install essential packages
 RUN apt-get update && apt-get install -y \
     # Build tools
-    build-essential \
-    gcc \
-    g++ \
-    make \
-    cmake \
-    ninja-build \
-    gdb \
-    git \
+    build-essential gcc g++ make cmake ninja-build gdb git \
     # Libraries for FreeRTOS POSIX port
-    libc6-dev \
-    libssl-dev \
-    libmbedtls-dev \
+    libc6-dev libssl-dev libmbedtls-dev \
     # Debugging and analysis tools
-    valgrind \
-    strace \
+    valgrind strace \
     # Network tools
-    net-tools \
-    iputils-ping \
-    iproute2 \
-    curl \
-    tcpdump \
+    net-tools iputils-ping iproute2 curl tcpdump \
     # Additional utilities
-    vim \
-    nano \
-    wget \
-    tree \
-    htop \
-    sudo \
-    ca-certificates \
+    vim nano wget tree htop sudo ca-certificates \
     # Python for scripts
-    python3 \
-    python3-pip \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    python3 python3-pip && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user with sudo privileges
 RUN userdel -r ubuntu 2>/dev/null || true \
