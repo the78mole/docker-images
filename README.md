@@ -27,6 +27,7 @@ All images are available on GitHub Container Registry at `ghcr.io/the78mole/<ima
 | **`latex-node`** | LaTeX + Node.js development | ~7.99GB | Document generation with JavaScript tooling |
 | **`nrfconnectsdk`** | Nordic nRF Connect SDK development | ~761MB | nRF microcontroller firmware, Zephyr RTOS |
 | **`jumpstarter-dev`** | Complete Jumpstarter development environment | ~1.58GB | Kind cluster, Docker-in-Docker, Robot Framework |
+| **`openclaw`** | OpenClaw AI agent platform | ~TBD | AI-powered autonomous agent, coding assistant |
 
 ---
 
@@ -80,6 +81,12 @@ docker run --rm -it -v $(pwd):/workspace \
 docker run --privileged -p 30010:30010 -p 30011:30011 -it \
   ghcr.io/the78mole/jumpstarter-dev:latest \
   setup-jumpstarter.sh
+
+# OpenClaw AI agent - autonomous coding assistant
+docker run -d --name openclaw -p 18789:18789 \
+  -v ~/.openclaw:/home/node/.openclaw \
+  -e ANTHROPIC_API_KEY=your-api-key \
+  ghcr.io/the78mole/openclaw:latest
 ```
 
 ### Development Containers (VS Code)
@@ -447,6 +454,71 @@ This image is fully compatible with VS Code DevContainers. Create `.devcontainer
     "remoteUser": "vscode"
 }
 ```
+
+### 🤖 OpenClaw AI Agent Platform (`openclaw`)
+
+Complete OpenClaw AI agent environment for autonomous task execution and coding assistance.
+
+**Features:**
+- OpenClaw AI agent platform with web UI
+- Node.js 20.x LTS runtime
+- Autonomous task execution
+- Multi-provider AI support (Anthropic, OpenAI, Google)
+- Persistent configuration and workspace
+- Web-based control interface
+
+**Usage:**
+```bash
+# First-time onboarding
+docker run -it --rm \
+  -v ~/.openclaw:/home/node/.openclaw \
+  ghcr.io/the78mole/openclaw:latest \
+  npm run onboard
+
+# Start gateway
+docker run -d --name openclaw \
+  --restart unless-stopped \
+  -p 18789:18789 \
+  -v ~/.openclaw:/home/node/.openclaw \
+  -e ANTHROPIC_API_KEY=your-api-key \
+  ghcr.io/the78mole/openclaw:latest
+
+# Access web UI at http://localhost:18789
+
+# Using Docker Compose (recommended)
+cd images/openclaw
+docker compose up -d
+```
+
+**Docker Compose Example:**
+```yaml
+version: '3.8'
+services:
+  openclaw:
+    image: ghcr.io/the78mole/openclaw:latest
+    container_name: openclaw-gateway
+    restart: unless-stopped
+    ports:
+      - "18789:18789"
+    volumes:
+      - openclaw-data:/home/node/.openclaw
+      - openclaw-workspace:/home/node/.openclaw/workspace
+    environment:
+      - ANTHROPIC_API_KEY=your-api-key-here
+      - OPENCLAW_HOME=/home/node/.openclaw
+
+volumes:
+  openclaw-data:
+  openclaw-workspace:
+```
+
+**Portainer Setup:**
+1. Create new stack in Portainer
+2. Use the docker-compose.yml from `images/openclaw/`
+3. Add your AI provider API keys in environment variables
+4. Deploy the stack
+5. Run onboarding via console: `npm run onboard`
+6. Access UI at http://localhost:18789
 
 ---
 
