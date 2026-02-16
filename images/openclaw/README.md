@@ -44,7 +44,7 @@ docker compose down
 
 - 🤖 **OpenClaw Gateway** - AI agent platform with autonomous capabilities
 - 🌐 **Web Control UI** - Access at http://localhost:18789
-- 🐍 **Node.js Runtime** - Complete Node.js 20.x LTS environment
+- 🐍 **Node.js Runtime** - Complete Node.js 18.x environment from Ubuntu 24.04
 - 📦 **Pre-installed Dependencies** - All OpenClaw dependencies included
 - 💾 **Persistent Data** - Configuration and workspace data preserved in volumes
 - 🔐 **Secure Setup** - User-based execution, no root access needed
