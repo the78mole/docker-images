@@ -84,7 +84,7 @@ docker run --privileged -p 30010:30010 -p 30011:30011 -it \
 
 # OpenClaw AI agent - autonomous coding assistant
 docker run -d --name openclaw -p 18789:18789 \
-  -v ~/.openclaw:/home/node/.openclaw \
+  -v ~/.openclaw:/home/ubuntu/.openclaw \
   -e ANTHROPIC_API_KEY=your-api-key \
   ghcr.io/the78mole/openclaw:latest
 ```
@@ -471,7 +471,7 @@ Complete OpenClaw AI agent environment for autonomous task execution and coding 
 ```bash
 # First-time onboarding
 docker run -it --rm \
-  -v ~/.openclaw:/home/node/.openclaw \
+  -v ~/.openclaw:/home/ubuntu/.openclaw \
   ghcr.io/the78mole/openclaw:latest \
   npm run onboard
 
@@ -479,7 +479,7 @@ docker run -it --rm \
 docker run -d --name openclaw \
   --restart unless-stopped \
   -p 18789:18789 \
-  -v ~/.openclaw:/home/node/.openclaw \
+  -v ~/.openclaw:/home/ubuntu/.openclaw \
   -e ANTHROPIC_API_KEY=your-api-key \
   ghcr.io/the78mole/openclaw:latest
 
@@ -501,11 +501,11 @@ services:
     ports:
       - "18789:18789"
     volumes:
-      - openclaw-data:/home/node/.openclaw
-      - openclaw-workspace:/home/node/.openclaw/workspace
+      - openclaw-data:/home/ubuntu/.openclaw
+      - openclaw-workspace:/home/ubuntu/.openclaw/workspace
     environment:
       - ANTHROPIC_API_KEY=your-api-key-here
-      - OPENCLAW_HOME=/home/node/.openclaw
+      - OPENCLAW_HOME=/home/ubuntu/.openclaw
 
 volumes:
   openclaw-data:

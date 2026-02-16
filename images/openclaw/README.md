@@ -306,7 +306,7 @@ deploy:
 
 1. **API Keys**: Never commit API keys to version control. Use environment variables or secrets.
 2. **Network Access**: By default, OpenClaw is only accessible on localhost. To expose externally, use a reverse proxy with authentication.
-3. **Volume Permissions**: The container runs as user `node` (UID 1000). Ensure mounted volumes have appropriate permissions.
+3. **Volume Permissions**: The container runs as user `ubuntu` (UID 1000). Ensure mounted volumes have appropriate permissions.
 4. **Updates**: Regularly pull the latest image to get security updates.
 
 ## VS Code DevContainer
@@ -322,7 +322,7 @@ Create `.devcontainer/devcontainer.json`:
         "18789": {"label": "OpenClaw UI"}
     },
     "postCreateCommand": "npm run onboard",
-    "remoteUser": "node",
+    "remoteUser": "ubuntu",
     "customizations": {
         "vscode": {
             "extensions": [
@@ -387,7 +387,7 @@ docker cp openclaw-gateway:/tmp/openclaw-backup.tar.gz ./openclaw-backup-$(date 
 - **Ubuntu 24.04 LTS** - Long-term support base system
 
 ### Tools & Versions
-- **Node.js 20.x LTS** - JavaScript runtime
+- **Node.js 18.x** - JavaScript runtime from Ubuntu 24.04 repos
 - **npm** - Package manager
 - **OpenClaw** - Latest from main branch
 
@@ -411,5 +411,5 @@ docker cp openclaw-gateway:/tmp/openclaw-backup.tar.gz ./openclaw-backup-$(date 
 | **Web UI** | http://localhost:18789 |
 | **Data Volume** | `openclaw-data` |
 | **Workspace Volume** | `openclaw-workspace` |
-| **Default User** | `node` (UID 1000) |
+| **Default User** | `ubuntu` (UID 1000) |
 | **Working Directory** | `/opt/openclaw` |
