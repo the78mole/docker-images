@@ -11,7 +11,7 @@
 ```bash
 # Run onboarding (first-time setup)
 docker run -it --rm \
-  -v ~/.openclaw:/home/node/.openclaw \
+  -v ~/.openclaw:/home/ubuntu/.openclaw \
   ghcr.io/the78mole/openclaw:latest \
   npm run onboard
 
@@ -19,7 +19,7 @@ docker run -it --rm \
 docker run -d --name openclaw \
   --restart unless-stopped \
   -p 18789:18789 \
-  -v ~/.openclaw:/home/node/.openclaw \
+  -v ~/.openclaw:/home/ubuntu/.openclaw \
   ghcr.io/the78mole/openclaw:latest
 ```
 
@@ -119,7 +119,7 @@ Configure these in your docker-compose.yml or Portainer environment variables:
 
 ### OpenClaw Configuration
 
-- `OPENCLAW_HOME` - Home directory for OpenClaw data (default: `/home/node/.openclaw`)
+- `OPENCLAW_HOME` - Home directory for OpenClaw data (default: `/home/ubuntu/.openclaw`)
 
 ## Key Features
 
@@ -212,7 +212,7 @@ docker compose up -d
 # Run with interactive console
 docker run -it --rm \
   -p 18789:18789 \
-  -v ~/.openclaw:/home/node/.openclaw \
+  -v ~/.openclaw:/home/ubuntu/.openclaw \
   ghcr.io/the78mole/openclaw:latest \
   bash
 ```
@@ -252,7 +252,7 @@ curl http://localhost:18789
 docker compose exec openclaw npm run onboard
 
 # Check token file
-docker compose exec openclaw cat /home/node/.openclaw/.env
+docker compose exec openclaw cat /home/ubuntu/.openclaw/.env
 ```
 
 ### Permission errors
@@ -273,7 +273,7 @@ Mount your own workspace directory:
 
 ```yaml
 volumes:
-  - ./my-projects:/home/node/.openclaw/workspace
+  - ./my-projects:/home/ubuntu/.openclaw/workspace
 ```
 
 ### Multiple AI Providers
@@ -362,7 +362,7 @@ jobs:
 ```bash
 #!/bin/bash
 # Backup OpenClaw data
-docker compose exec openclaw tar czf /tmp/openclaw-backup.tar.gz /home/node/.openclaw
+docker compose exec openclaw tar czf /tmp/openclaw-backup.tar.gz /home/ubuntu/.openclaw
 docker cp openclaw-gateway:/tmp/openclaw-backup.tar.gz ./openclaw-backup-$(date +%Y%m%d).tar.gz
 ```
 

@@ -8,8 +8,8 @@ services:
     ports:
       - "18789:18789"
     volumes:
-      - openclaw-data:/home/node/.openclaw
-      - openclaw-workspace:/home/node/.openclaw/workspace
+      - openclaw-data:/home/ubuntu/.openclaw
+      - openclaw-workspace:/home/ubuntu/.openclaw/workspace
     environment:
       # Set your AI provider API keys here
       # For Anthropic (Claude):
@@ -17,7 +17,7 @@ services:
       # For OpenAI (GPT):
       # - OPENAI_API_KEY=your-api-key-here
       # For other providers, see https://docs.openclaw.ai
-      - OPENCLAW_HOME=/home/node/.openclaw
+      - OPENCLAW_HOME=/home/ubuntu/.openclaw
     # Uncomment to run onboarding instead of gateway
     # command: ["npm", "run", "onboard"]
     healthcheck:
