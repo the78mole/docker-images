@@ -387,7 +387,7 @@ docker cp openclaw-gateway:/tmp/openclaw-backup.tar.gz ./openclaw-backup-$(date 
 - **Ubuntu 24.04 LTS** - Long-term support base system
 
 ### Tools & Versions
-- **Node.js 22.x LTS** - JavaScript runtime from NodeSource
+- **Node.js 22.12.0** - JavaScript runtime from nodejs.org official binaries
 - **pnpm 10.23.0** - Fast, disk space efficient package manager
 - **OpenClaw** - Latest from main branch
 

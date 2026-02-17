@@ -12,8 +12,9 @@ RUN apt-get update && apt-get install -y \
     xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 22.x using official binaries
+# Install Node.js 22.x using official binaries with SHA256 verification
 RUN wget https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz && \
+    echo "22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f  node-v22.12.0-linux-x64.tar.xz" | sha256sum -c - && \
     tar -xJf node-v22.12.0-linux-x64.tar.xz -C /usr/local --strip-components=1 && \
     rm node-v22.12.0-linux-x64.tar.xz
 
