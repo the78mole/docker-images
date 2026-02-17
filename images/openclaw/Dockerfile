@@ -5,20 +5,19 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    wget \
     git \
     ca-certificates \
-    gnupg \
     sudo \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 22.x from NodeSource
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
+# Install Node.js 22.x using official binaries
+RUN wget https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz && \
+    tar -xJf node-v22.12.0-linux-x64.tar.xz -C /usr/local --strip-components=1 && \
+    rm node-v22.12.0-linux-x64.tar.xz
 
-# Install pnpm globally (OpenClaw uses pnpm, not npm)
+# Install pnpm using npm (which comes with Node.js)
 RUN npm install -g pnpm@10.23.0
 
 # Configure the ubuntu user (UID/GID 1000) for sudo access
