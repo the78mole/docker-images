@@ -19,7 +19,7 @@ services:
       # For other providers, see https://docs.openclaw.ai
       - OPENCLAW_HOME=/home/ubuntu/.openclaw
     # Uncomment to run onboarding instead of gateway
-    # command: ["npm", "run", "onboard"]
+    # command: ["pnpm", "run", "onboard"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:18789"]
       interval: 30s

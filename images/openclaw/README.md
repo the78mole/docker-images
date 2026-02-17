@@ -13,7 +13,7 @@
 docker run -it --rm \
   -v ~/.openclaw:/home/ubuntu/.openclaw \
   ghcr.io/the78mole/openclaw:latest \
-  npm run onboard
+  pnpm run onboard
 
 # Start the gateway
 docker run -d --name openclaw \
@@ -44,7 +44,7 @@ docker compose down
 
 - 🤖 **OpenClaw Gateway** - AI agent platform with autonomous capabilities
 - 🌐 **Web Control UI** - Access at http://localhost:18789
-- 🐍 **Node.js Runtime** - Complete Node.js 18.x environment from Ubuntu 24.04
+- 🐍 **Node.js Runtime** - Complete Node.js 22.x LTS environment with pnpm
 - 📦 **Pre-installed Dependencies** - All OpenClaw dependencies included
 - 💾 **Persistent Data** - Configuration and workspace data preserved in volumes
 - 🔐 **Secure Setup** - User-based execution, no root access needed
@@ -89,7 +89,7 @@ docker compose down
    - Find the `openclaw-gateway` container
    - Click on the container name
    - Click "Console" → "Connect"
-   - Run: `npm run onboard`
+   - Run: `pnpm run onboard`
    - Follow the onboarding wizard to configure your AI provider
 
 7. **Access OpenClaw**
@@ -148,26 +148,26 @@ Configure these in your docker-compose.yml or Portainer environment variables:
 **Inside the container:**
 ```bash
 # Run onboarding wizard
-npm run onboard
+pnpm run onboard
 
 # Start gateway in foreground
-npm run gateway start -- --foreground
+pnpm run gateway start -- --foreground
 
 # Start gateway as daemon
-npm run gateway start
+pnpm run gateway start
 
 # Stop gateway
-npm run gateway stop
+pnpm run gateway stop
 
 # Check gateway status
-npm run gateway status
+pnpm run gateway status
 
 # Access dashboard
-npm run dashboard
+pnpm run dashboard
 
 # Device management
-npm run devices list
-npm run devices approve <requestId>
+pnpm run devices list
+pnpm run devices approve <requestId>
 ```
 
 ## Volumes
@@ -195,7 +195,7 @@ docker compose up -d
 docker compose logs -f openclaw
 
 # Execute a command inside the container
-docker compose exec openclaw npm run gateway status
+docker compose exec openclaw pnpm run gateway status
 ```
 
 ### With Environment Variables
@@ -249,7 +249,7 @@ curl http://localhost:18789
 
 ```bash
 # Regenerate token by running onboarding again
-docker compose exec openclaw npm run onboard
+docker compose exec openclaw pnpm run onboard
 
 # Check token file
 docker compose exec openclaw cat /home/ubuntu/.openclaw/.env
@@ -262,7 +262,7 @@ docker compose exec openclaw cat /home/ubuntu/.openclaw/.env
 docker compose down
 docker volume rm openclaw-data openclaw-workspace
 docker compose up -d
-docker compose exec openclaw npm run onboard
+docker compose exec openclaw pnpm run onboard
 ```
 
 ## Advanced Configuration
@@ -321,7 +321,7 @@ Create `.devcontainer/devcontainer.json`:
     "portsAttributes": {
         "18789": {"label": "OpenClaw UI"}
     },
-    "postCreateCommand": "npm run onboard",
+    "postCreateCommand": "pnpm run onboard",
     "remoteUser": "ubuntu",
     "customizations": {
         "vscode": {
@@ -354,7 +354,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -e ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
             ghcr.io/the78mole/openclaw:latest \
-            npm run analyze /workspace
+            pnpm run analyze /workspace
 ```
 
 ### Automated Backups
@@ -387,8 +387,8 @@ docker cp openclaw-gateway:/tmp/openclaw-backup.tar.gz ./openclaw-backup-$(date 
 - **Ubuntu 24.04 LTS** - Long-term support base system
 
 ### Tools & Versions
-- **Node.js 18.x** - JavaScript runtime from Ubuntu 24.04 repos
-- **npm** - Package manager
+- **Node.js 22.x LTS** - JavaScript runtime from NodeSource
+- **pnpm 10.23.0** - Fast, disk space efficient package manager
 - **OpenClaw** - Latest from main branch
 
 ### Networking

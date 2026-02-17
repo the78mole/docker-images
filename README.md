@@ -473,7 +473,7 @@ Complete OpenClaw AI agent environment for autonomous task execution and coding 
 docker run -it --rm \
   -v ~/.openclaw:/home/ubuntu/.openclaw \
   ghcr.io/the78mole/openclaw:latest \
-  npm run onboard
+  pnpm run onboard
 
 # Start gateway
 docker run -d --name openclaw \
@@ -517,7 +517,7 @@ volumes:
 2. Use the docker-compose.yml from `images/openclaw/`
 3. Add your AI provider API keys in environment variables
 4. Deploy the stack
-5. Run onboarding via console: `npm run onboard`
+5. Run onboarding via console: `pnpm run onboard`
 6. Access UI at http://localhost:18789
 
 ---
