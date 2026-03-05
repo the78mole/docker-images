@@ -601,7 +601,7 @@ jobs:
 
       - name: Build and push Docker image
         if: steps.should_build.outputs.should_build == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.context }}/${{ matrix.dockerfile }}
