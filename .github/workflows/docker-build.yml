@@ -28,7 +28,7 @@ jobs:
 
       - name: Generate repository version
         id: semver
-        uses: paulhatch/semantic-version@v6.0.1
+        uses: paulhatch/semantic-version@v6.0.2
         with:
           branch: main
           tag_prefix: "v"
