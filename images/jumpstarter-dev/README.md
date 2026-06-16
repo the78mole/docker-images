@@ -273,7 +273,8 @@ jobs:
 ## Technical Details
 
 ### Base Image
-- **mcr.microsoft.com/devcontainers/base:ubuntu** - Official DevContainer base
+- **mcr.microsoft.com/devcontainers/base:ubuntu-24.04** - Official DevContainer
+  base
 - **Ubuntu 24.04 LTS** - Long-term support base system
 
 ### Tools & Versions

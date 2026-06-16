@@ -15,9 +15,9 @@ dependencies = [
 
 [project.optional-dependencies]
 testing = [
-    "robotframework==7.4.1",
+    "robotframework==7.4.2",
     "robotframework-requests==0.9.7",
-    "robotframework-browser==19.12.5",
+    "robotframework-browser==19.15.1",
     "pytest",
     "pytest-asyncio",
 ]
