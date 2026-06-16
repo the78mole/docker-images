@@ -1,6 +1,6 @@
 # Jumpstarter Development Environment Docker Image
 
-FROM mcr.microsoft.com/devcontainers/base:ubuntu
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
 LABEL maintainer="the78mole"
 LABEL description="Complete Jumpstarter development environment with Docker-in-Docker, Kind, and all necessary tools"
