@@ -1,5 +1,5 @@
 # KiCad CLI Tools and Production Extensions
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive

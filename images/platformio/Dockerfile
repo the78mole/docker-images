@@ -1,4 +1,4 @@
-FROM ubuntu:noble
+FROM ubuntu:resolute
 
 # Label will be set during build via --label flag
 # LABEL org.opencontainers.image.source will be added during CI build
