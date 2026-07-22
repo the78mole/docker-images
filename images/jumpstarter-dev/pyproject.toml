@@ -17,7 +17,7 @@ dependencies = [
 testing = [
     "robotframework==7.4.2",
     "robotframework-requests==0.9.7",
-    "robotframework-browser==19.15.1",
+    "robotframework-browser==20.1.0",
     "pytest",
     "pytest-asyncio",
 ]
