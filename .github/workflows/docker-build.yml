@@ -48,8 +48,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get list of all images
-          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr jumpstarter-dev freertos-dev-posix)
-          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "jumpstarter-dev", "freertos-dev-posix"]'          # Function to check if package version exists in GHCR
+          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr jumpstarter-dev freertos-dev-posix openclaw)
+          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "jumpstarter-dev", "freertos-dev-posix", "openclaw"]'          # Function to check if package version exists in GHCR
           check_package_exists() {
             local image=$1
             local version=$2
@@ -281,6 +281,11 @@ jobs:
           - image: freertos-dev-posix
             dockerfile: Dockerfile
             context: images/freertos-dev-posix
+            dependencies: []
+            spacefree: false
+          - image: openclaw
+            dockerfile: Dockerfile
+            context: images/openclaw
             dependencies: []
             spacefree: false
     steps:
