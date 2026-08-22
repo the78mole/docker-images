@@ -48,8 +48,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get list of all images
-          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr jumpstarter-dev freertos-dev-posix openclaw)
-          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "jumpstarter-dev", "freertos-dev-posix", "openclaw"]'          # Function to check if package version exists in GHCR
+          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr jumpstarter-dev freertos-dev-posix openclaw nrfconnectsdk)
+          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "jumpstarter-dev", "freertos-dev-posix", "openclaw", "nrfconnectsdk"]'          # Function to check if package version exists in GHCR
           check_package_exists() {
             local image=$1
             local version=$2
@@ -383,6 +383,11 @@ jobs:
           - image: openclaw
             dockerfile: Dockerfile
             context: images/openclaw
+            dependencies: []
+            spacefree: false
+          - image: nrfconnectsdk
+            dockerfile: Dockerfile
+            context: images/nrfconnectsdk
             dependencies: []
             spacefree: false
     steps:
