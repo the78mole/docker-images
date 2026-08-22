@@ -316,7 +316,13 @@ jobs:
       id-token: write
       actions: read
     needs: [detect-changes, validate-versions]
+    # bump-versions is skipped on pushes and non-bot PRs, and GitHub propagates
+    # that skip transitively through the needs chain. Check the results we
+    # actually care about explicitly so this job still runs.
     if: >-
+      !cancelled() &&
+      needs.detect-changes.result == 'success' &&
+      needs.validate-versions.result == 'success' &&
       needs.detect-changes.outputs.images != '[]' &&
       needs.detect-changes.outputs.images != ''
     strategy:
@@ -723,6 +729,9 @@ jobs:
       contents: write
       packages: write
     if: >-
+      !cancelled() &&
+      needs.detect-changes.result == 'success' &&
+      needs.build-and-push.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.detect-changes.outputs.images != '[]' &&
