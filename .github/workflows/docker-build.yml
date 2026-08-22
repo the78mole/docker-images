@@ -163,13 +163,97 @@ jobs:
             echo "images=$images_json" >> $GITHUB_OUTPUT
           fi
 
-  validate-versions:
+  bump-versions:
+    name: Auto-bump VERSION files (bot PRs)
     runs-on: ubuntu-latest
     needs: detect-changes
+    permissions:
+      contents: write
+    # Renovate/Dependabot never touch the VERSION files, which would make every
+    # dependency PR fail validate-versions. Bump the patch level for them instead.
+    # Only in-repo branches -- fork PRs cannot be pushed to.
     if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.actor == 'renovate[bot]' || github.actor == 'dependabot[bot]') &&
+      needs.detect-changes.outputs.images != '[]' &&
+      needs.detect-changes.outputs.images != ''
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Bump VERSION for changed images
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          IMAGES: ${{ needs.detect-changes.outputs.images }}
+        run: |
+          set -euo pipefail
+
+          changed_files=$(git diff --name-only "$BASE_SHA...HEAD")
+          echo "Changed files:"
+          echo "$changed_files"
+
+          bumped=false
+          while read -r image; do
+            [[ -z "$image" ]] && continue
+
+            # Only images whose content actually changed in this PR
+            if ! echo "$changed_files" | grep -q "^images/$image/"; then
+              continue
+            fi
+
+            if echo "$changed_files" | grep -q "^images/$image/VERSION$"; then
+              echo "✅ $image: VERSION already bumped in this PR"
+              continue
+            fi
+
+            version_file="images/$image/VERSION"
+            if [[ ! -f "$version_file" ]]; then
+              echo "⚠️  $image: no VERSION file, skipping"
+              continue
+            fi
+
+            current=$(tr -d '[:space:]' < "$version_file")
+            if [[ ! "$current" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              echo "❌ $image: VERSION '$current' is not semver, cannot auto-bump"
+              exit 1
+            fi
+
+            new="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$(( BASH_REMATCH[3] + 1 ))"
+            echo "$new" > "$version_file"
+            git add "$version_file"
+            echo "⬆️  $image: $current -> $new"
+            bumped=true
+          done < <(echo "$IMAGES" | jq -r '.[]')
+
+          if [[ "$bumped" != "true" ]]; then
+            echo "✅ Nothing to bump"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: auto-bump image VERSION files for dependency update"
+          git push origin "HEAD:$HEAD_REF"
+
+  validate-versions:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, bump-versions]
+    # bump-versions is skipped for human/fork PRs and for pushes, so guard with
+    # !cancelled() and only bail out if it actually failed.
+    if: >-
+      !cancelled() &&
+      needs.detect-changes.result == 'success' &&
+      needs.bump-versions.result != 'failure' &&
       needs.detect-changes.outputs.images != '[]' &&
       needs.detect-changes.outputs.images != ''
     strategy:
+      fail-fast: false
       matrix:
         image: ${{ fromJSON(needs.detect-changes.outputs.images) }}
     steps:
@@ -179,6 +263,10 @@ jobs:
           fetch-depth: 0
 
       - name: Check if version needs update
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           image="${{ matrix.image }}"
           echo "Checking version for image: $image"
@@ -189,8 +277,15 @@ jobs:
             # For pushes to main, check what changed in the last commit
             changed_files=$(git diff --name-only HEAD~1 HEAD)
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # For PRs, compare against the base branch
-            changed_files=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }})
+            # Re-resolve the branch tip: bump-versions may have pushed a VERSION
+            # commit after this run's head SHA was pinned. Fork PRs are not on
+            # origin, so fall back to the pinned head SHA there.
+            head_rev="$HEAD_SHA"
+            if git fetch --no-tags --quiet origin "$HEAD_REF" 2>/dev/null; then
+              head_rev=$(git rev-parse FETCH_HEAD)
+            fi
+            echo "Comparing $BASE_SHA...$head_rev"
+            changed_files=$(git diff --name-only "$BASE_SHA...$head_rev")
           else
             # For manual triggers, skip version check
             echo "✅ Manual trigger - skipping version check for image $image"
@@ -200,10 +295,6 @@ jobs:
           # Check if image directory has changes
           if echo "$changed_files" | grep -q "^images/$image/"; then
             echo "Image $image has changes, checking version..."
-
-            # Get current version from VERSION file
-            current_version=$(cat "images/$image/VERSION")
-            echo "Current version: $current_version"
 
             # Check if VERSION file was also changed
             if echo "$changed_files" | grep -q "^images/$image/VERSION$"; then
@@ -318,7 +409,7 @@ jobs:
           # this might remove tools that are actually needed,
           # if set to "true" but frees about 6 GB
           tool-cache: false
-          
+
           # all of these default to true, but feel free to set to
           # "false" if necessary for your workflow
           android: true
@@ -338,20 +429,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           dependencies='${{ toJSON(matrix.dependencies) }}'
-          
+
           if [ "$dependencies" = "[]" ] || [ "$dependencies" = "null" ]; then
             echo "ℹ️  No dependencies for ${{ matrix.image }}"
             exit 0
           fi
-          
+
           echo "🔄 Checking dependencies for ${{ matrix.image }}: $dependencies"
-          
+
           # Parse dependencies array
           deps=$(echo "$dependencies" | jq -r '.[]')
-          
+
           for dep in $deps; do
             echo "⏳ Waiting for dependency: $dep"
-            
+
             # Get required version for dependency
             if [ -f "images/$dep/VERSION" ]; then
               required_version=$(cat "images/$dep/VERSION")
@@ -360,82 +451,82 @@ jobs:
               echo "❌ VERSION file not found for dependency $dep"
               exit 1
             fi
-            
+
             # First check if dependency is being built in current workflow
             changed_images='${{ needs.detect-changes.outputs.images }}'
               if echo "$changed_images" | grep -q "\"$dep\""; then
                 echo "   🔄 Dependency $dep is being built in current workflow"
-                
+
                 # Wait for dependency job to complete AND push to registry
                 max_wait=1800  # 30 minutes
                 wait_interval=30
                 elapsed=0
-                
+
                 while [ $elapsed -lt $max_wait ]; do
                   echo "   🔍 Checking workflow jobs status... (${elapsed}s elapsed)"
-                  
+
                   # Get current workflow run jobs
                   jobs_response=$(curl -s \
                     -H "Authorization: Bearer $GITHUB_TOKEN" \
                     -H "Accept: application/vnd.github.v3+json" \
                     "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
-                  
+
                   # Debug: Show all job names
                   if [ $elapsed -eq 0 ]; then
                     echo "   🔍 Available jobs in this workflow:"
                     echo "$jobs_response" | jq -r '.jobs[].name' | sed 's/^/     - /'
                   fi
-                  
+
                   # Check if dependency build job completed successfully
                   dep_job_status=$(echo "$jobs_response" | jq -r --arg dep "$dep" '
-                    .jobs[] | 
-                    select(.name | test("build-and-push \\(.+ / " + $dep + "\\)")) | 
+                    .jobs[] |
+                    select(.name | test("build-and-push \\(.+ / " + $dep + "\\)")) |
                     .status + ":" + (.conclusion // "null")')
-                  
+
                   if [ -z "$dep_job_status" ]; then
                     # Alternative: try simpler job name matching
                     dep_job_status=$(echo "$jobs_response" | jq -r --arg dep "$dep" '
-                      .jobs[] | 
-                      select(.name | contains($dep)) | 
+                      .jobs[] |
+                      select(.name | contains($dep)) |
                       select(.name | contains("build-and-push")) |
                       .status + ":" + (.conclusion // "null")' | head -1)
                   fi
-                  
+
                   echo "   📊 Job status for $dep: $dep_job_status"
-                  
+
                   case "$dep_job_status" in
                     "completed:success")
                       echo "   ✅ Dependency $dep build completed successfully!"
                       echo "   🔄 Waiting additional 60s for registry sync..."
                       sleep 60
-                      
+
                       # Verify image is available in registry
                       echo "   🔍 Verifying $dep:latest is available in registry..."
                       max_registry_wait=300  # 5 minutes for registry sync
                       registry_elapsed=0
                       registry_interval=15
-                      
+
                       while [ $registry_elapsed -lt $max_registry_wait ]; do
                         response=$(curl -s -w "%{http_code}" \
                           -H "Authorization: Bearer $GITHUB_TOKEN" \
                           -H "Accept: application/vnd.github.v3+json" \
                           "https://api.github.com/user/packages/container/$dep/versions" 2>/dev/null)
-                        
+
                         http_code="${response: -3}"
                         response_body="${response%???}"
-                        
+
                         if [ "$http_code" = "200" ]; then
                           if echo "$response_body" | jq -r '.[].metadata.container.tags[]?' 2>/dev/null | grep -q "^latest$"; then
                             echo "   ✅ $dep:latest is available in registry!"
                             break 2  # Break out of both loops
                           fi
                         fi
-                        
+
                         echo "   ⏳ Registry sync pending... (${registry_elapsed}s)"
                         sleep $registry_interval
                         registry_elapsed=$((registry_elapsed + registry_interval))
                       done
-                      
+
                       if [ $registry_elapsed -ge $max_registry_wait ]; then
                         echo "   ⚠️  Registry sync timeout, proceeding anyway..."
                         break
@@ -455,7 +546,7 @@ jobs:
                       echo "   ❓ Unknown status for $dep: $dep_job_status"
                       ;;
                   esac
-                  
+
                   sleep $wait_interval
                   elapsed=$((elapsed + wait_interval))
                 done              # Check if we timed out
@@ -463,19 +554,19 @@ jobs:
                 echo "❌ Timeout waiting for dependency $dep build to complete"
                 exit 1
               fi
-              
+
             else
               echo "   📦 Dependency $dep not being built in current workflow, checking registry..."
-              
+
               # Check if dependency image exists in GHCR
               response=$(curl -s -w "%{http_code}" \
                 -H "Authorization: Bearer $GITHUB_TOKEN" \
                 -H "Accept: application/vnd.github.v3+json" \
                 "https://api.github.com/user/packages/container/$dep/versions" 2>/dev/null)
-              
+
               http_code="${response: -3}"
               response_body="${response%???}"
-              
+
               case "$http_code" in
                 200)
                   if echo "$response_body" | jq -r '.[].metadata.container.tags[]?' 2>/dev/null | grep -q "^$required_version$"; then
@@ -496,7 +587,7 @@ jobs:
               esac
             fi
           done
-          
+
           echo "✅ All dependencies satisfied for ${{ matrix.image }}"
 
       - name: Set up Docker Buildx
@@ -557,16 +648,16 @@ jobs:
         run: |
           image="${{ matrix.image }}"
           build_args=""
-          
+
           # Handle dependencies by setting appropriate base image build args
           dependencies='${{ toJSON(matrix.dependencies) }}'
           if [ "$dependencies" != "[]" ] && [ "$dependencies" != "null" ]; then
             echo "Setting up build args for dependencies..."
             deps=$(echo "$dependencies" | jq -r '.[]')
-            
+
             for dep in $deps; do
               echo "Setting BASE_IMAGE for dependency $dep"
-              
+
               # Check if dependency is being built in current workflow
               changed_images='${{ needs.detect-changes.outputs.images }}'
               if echo "$changed_images" | grep -q "\"$dep\""; then
@@ -600,7 +691,7 @@ jobs:
               break  # Use first dependency as base image
             done
           fi
-          
+
           echo "build_args=$build_args" >> $GITHUB_OUTPUT
           echo "Final build args: $build_args"
 

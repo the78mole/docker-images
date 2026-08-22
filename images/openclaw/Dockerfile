@@ -13,10 +13,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 22.x using official binaries with SHA256 verification
-RUN wget https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz && \
-    echo "22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f  node-v22.12.0-linux-x64.tar.xz" | sha256sum -c - && \
-    tar -xJf node-v22.12.0-linux-x64.tar.xz -C /usr/local --strip-components=1 && \
-    rm node-v22.12.0-linux-x64.tar.xz
+RUN wget https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-x64.tar.xz && \
+    echo "d60acfe00a2932254bb0ad20e01b0d74397a0875595de719654b214f4b03f307  node-v22.23.2-linux-x64.tar.xz" | sha256sum -c - && \
+    tar -xJf node-v22.23.2-linux-x64.tar.xz -C /usr/local --strip-components=1 && \
+    rm node-v22.23.2-linux-x64.tar.xz
 
 # Install pnpm using npm (which comes with Node.js)
 RUN npm install -g pnpm@10.23.0
