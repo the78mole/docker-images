@@ -1,4 +1,4 @@
-FROM wordpress:7.0.0-apache
+FROM wordpress:7.1.0-apache
 
 # Install msmtp, ca-certificates and PHP MySQL extension
 RUN apt-get update && \
