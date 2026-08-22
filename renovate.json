@@ -68,6 +68,19 @@
         "kicaddev",
         "python"
       ]
+    },
+    {
+      "description": "KiCad needs pillow<10 (see #21) and pillow 9.5.0 has no wheels for the Python in Ubuntu 26.04, so keep this base image on 24.04.",
+      "matchFileNames": [
+        "images/kicaddev/Dockerfile"
+      ],
+      "matchPackageNames": [
+        "ubuntu"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
     }
   ],
   "dockerfile": {

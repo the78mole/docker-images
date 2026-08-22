@@ -1,4 +1,6 @@
 # KiCad CLI Tools and Production Extensions
+# Pinned to 24.04: KiCad needs pillow<10 (see #21) and pillow 9.5.0 has no wheels
+# for the Python shipped with 26.04, where its setup.py also fails to build.
 FROM ubuntu:24.04
 
 # Prevent interactive prompts during package installation
