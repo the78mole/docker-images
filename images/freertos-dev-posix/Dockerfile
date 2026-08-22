@@ -1,4 +1,4 @@
-# Use Ubuntu 24.04 as base image
+# Use Ubuntu 26.04 as base image
 FROM ubuntu:26.04
 
 ARG USERNAME=vscode
