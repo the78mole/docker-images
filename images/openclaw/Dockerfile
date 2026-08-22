@@ -22,7 +22,7 @@ RUN wget https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-x64.tar.xz && \
 RUN npm install -g pnpm@10.23.0
 
 # Configure the ubuntu user (UID/GID 1000) for sudo access
-# Ubuntu 24.04 containers include an ubuntu user by default
+# Ubuntu containers include an ubuntu user by default (still UID 1000 on 26.04)
 RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
     chmod 0440 /etc/sudoers.d/ubuntu
 
