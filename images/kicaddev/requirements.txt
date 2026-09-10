@@ -8,7 +8,7 @@ kikit==1.8.1
 git+https://github.com/the78mole/PcbDraw.git
 
 # Interactive HTML BOM generator
-InteractiveHtmlBom==2.11.2
+InteractiveHtmlBom==2.12.0
 
 # Documentation tools for Sphinx and ReadTheDocs
 sphinx==8.2.3
