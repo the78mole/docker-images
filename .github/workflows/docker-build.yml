@@ -817,6 +817,14 @@ jobs:
             exit 0
           fi
 
+          # The same images under their versioned tag, registry prefix dropped
+          # because it is already spelled out in the pull commands above.
+          versioned=$(cat "${files[@]}" \
+            | grep -- "-pr${PR}\$" \
+            | grep -v -- ":latest-pr${PR}\$" \
+            | sed 's#^.*/##' \
+            | sort -u || true)
+
           marker="<!-- pr-images -->"
           {
             echo "$marker"
@@ -827,9 +835,14 @@ jobs:
             echo '```bash'
             sed 's/^/docker pull /' <<< "$pulls"
             echo '```'
+            if [[ -n "$versioned" ]]; then
+              echo
+              echo "Dieselben Images unter ihrem versionierten Tag:"
+              echo
+              sed 's/^/- `/; s/$/`/' <<< "$versioned"
+            fi
             echo
-            echo "Auch als \`<image>:<VERSION>-pr${PR}\` getaggt."
-            echo "Beide werden bei jedem Push auf den PR überschrieben."
+            echo "Alle Tags werden bei jedem Push auf den PR überschrieben."
           } > comment.md
 
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
