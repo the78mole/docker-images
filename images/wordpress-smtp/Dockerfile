@@ -14,4 +14,3 @@ RUN chmod +x /usr/local/bin/msmtp_entrypoint.sh
 # Hook into WordPress entrypoint
 ENTRYPOINT ["/usr/local/bin/msmtp_entrypoint.sh"]
 CMD ["docker-entrypoint.sh", "apache2-foreground"]
-# throwaway: exercise validate-versions without a VERSION bump
