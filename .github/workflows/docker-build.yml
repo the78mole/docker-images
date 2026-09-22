@@ -184,10 +184,17 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
+          # A push made with the default GITHUB_TOKEN produces a synchronize
+          # event that GitHub parks as "action_required" -- the PR head then
+          # carries no checks at all until someone approves the run by hand.
+          # VERSION_BUMP_TOKEN (a PAT or GitHub App token with contents:write)
+          # makes the push a trusted one so the follow-up run starts on its own.
+          token: ${{ secrets.VERSION_BUMP_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Bump VERSION for changed images
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HAS_PUSH_TOKEN: ${{ secrets.VERSION_BUMP_TOKEN != '' }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           IMAGES: ${{ needs.detect-changes.outputs.images }}
         run: |
@@ -240,6 +247,14 @@ jobs:
             "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: auto-bump image VERSION files for dependency update"
           git push origin "HEAD:$HEAD_REF"
+
+          if [[ "$HAS_PUSH_TOKEN" != "true" ]]; then
+            msg="VERSION_BUMP_TOKEN is not configured, so the bump was pushed"
+            msg="$msg with GITHUB_TOKEN. The run for the new PR head will sit"
+            msg="$msg in 'action_required' and the PR will show no checks"
+            msg="$msg until it is approved by hand under Actions."
+            echo "::warning::$msg"
+          fi
 
   validate-versions:
     runs-on: ubuntu-latest
