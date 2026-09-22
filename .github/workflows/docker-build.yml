@@ -164,50 +164,57 @@ jobs:
           fi
 
   bump-versions:
-    name: Auto-bump VERSION files (bot PRs)
+    name: Auto-bump VERSION files (main)
     runs-on: ubuntu-latest
     needs: detect-changes
     permissions:
       contents: write
-    # Renovate/Dependabot never touch the VERSION files, which would make every
-    # dependency PR fail validate-versions. Bump the patch level for them instead.
-    # Only in-repo branches -- fork PRs cannot be pushed to.
+    outputs:
+      build-sha: ${{ steps.bump.outputs.build-sha }}
+    # Renovate/Dependabot never touch the VERSION files. Bumping them on the PR
+    # branch would mean pushing to it from CI: that push carries GITHUB_TOKEN,
+    # GitHub parks the resulting synchronize run as "action_required" and the
+    # PR ends up with no checks at all. So the bump happens here on main
+    # instead, before build-and-push reads the VERSION files.
     if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      (github.actor == 'renovate[bot]' || github.actor == 'dependabot[bot]') &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
       needs.detect-changes.outputs.images != '[]' &&
       needs.detect-changes.outputs.images != ''
     steps:
-      - name: Checkout PR branch
+      - name: Checkout main
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Bump VERSION for changed images
+        id: bump
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
           IMAGES: ${{ needs.detect-changes.outputs.images }}
         run: |
           set -euo pipefail
 
-          changed_files=$(git diff --name-only "$BASE_SHA...HEAD")
+          # Same range detect-changes used for this push.
+          changed_files=$(git diff --name-only HEAD~1 HEAD)
           echo "Changed files:"
           echo "$changed_files"
+
+          # Default: build exactly what this run was triggered for.
+          echo "build-sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
 
           bumped=false
           while read -r image; do
             [[ -z "$image" ]] && continue
 
-            # Only images whose content actually changed in this PR
+            # Only images whose content actually changed in this push.
+            # detect-changes also lists images that are merely missing from
+            # GHCR -- their VERSION is fine and must not be bumped.
             if ! echo "$changed_files" | grep -q "^images/$image/"; then
               continue
             fi
 
             if echo "$changed_files" | grep -q "^images/$image/VERSION$"; then
-              echo "✅ $image: VERSION already bumped in this PR"
+              echo "✅ $image: VERSION already bumped in this change"
               continue
             fi
 
@@ -238,18 +245,39 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email \
             "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: auto-bump image VERSION files for dependency update"
-          git push origin "HEAD:$HEAD_REF"
+          git commit -m "chore: auto-bump image VERSION files [skip ci]"
+
+          # main may have moved on while the images were being inspected.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              break
+            fi
+            if [[ "$attempt" == "3" ]]; then
+              echo "❌ Could not push the VERSION bump to main"
+              exit 1
+            fi
+            echo "⚠️  Push rejected, rebasing onto main (attempt $attempt)"
+            git fetch --no-tags origin main
+            git rebase origin/main
+          done
+
+          # build-and-push must read the bumped VERSION files, not the ones
+          # this run was triggered on.
+          new_sha=$(git rev-parse HEAD)
+          echo "build-sha=$new_sha" >> "$GITHUB_OUTPUT"
+          echo "➡️  build-and-push will check out $new_sha"
 
   validate-versions:
+    name: Require a VERSION bump (human PRs)
     runs-on: ubuntu-latest
-    needs: [detect-changes, bump-versions]
-    # bump-versions is skipped for human/fork PRs and for pushes, so guard with
-    # !cancelled() and only bail out if it actually failed.
+    needs: detect-changes
+    # A guard for humans editing image content without bumping VERSION. Bot PRs
+    # are exempt: Renovate cannot know about the VERSION convention, and the
+    # bump-versions job takes care of them once the PR lands on main.
     if: >-
-      !cancelled() &&
-      needs.detect-changes.result == 'success' &&
-      needs.bump-versions.result != 'failure' &&
+      github.event_name == 'pull_request' &&
+      github.actor != 'renovate[bot]' &&
+      github.actor != 'dependabot[bot]' &&
       needs.detect-changes.outputs.images != '[]' &&
       needs.detect-changes.outputs.images != ''
     strategy:
@@ -266,31 +294,14 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           image="${{ matrix.image }}"
           echo "Checking version for image: $image"
 
-          # Determine changed files based on event type
-          if [[ "${{ github.event_name }}" == "push" ]] && \
-             [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            # For pushes to main, check what changed in the last commit
-            changed_files=$(git diff --name-only HEAD~1 HEAD)
-          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # Re-resolve the branch tip: bump-versions may have pushed a VERSION
-            # commit after this run's head SHA was pinned. Fork PRs are not on
-            # origin, so fall back to the pinned head SHA there.
-            head_rev="$HEAD_SHA"
-            if git fetch --no-tags --quiet origin "$HEAD_REF" 2>/dev/null; then
-              head_rev=$(git rev-parse FETCH_HEAD)
-            fi
-            echo "Comparing $BASE_SHA...$head_rev"
-            changed_files=$(git diff --name-only "$BASE_SHA...$head_rev")
-          else
-            # For manual triggers, skip version check
-            echo "✅ Manual trigger - skipping version check for image $image"
-            exit 0
-          fi
+          # Nothing rewrites the PR branch any more, so the pinned head SHA is
+          # the branch tip and works for fork PRs too.
+          echo "Comparing $BASE_SHA...$HEAD_SHA"
+          changed_files=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
 
           # Check if image directory has changes
           if echo "$changed_files" | grep -q "^images/$image/"; then
@@ -315,14 +326,16 @@ jobs:
       packages: write
       id-token: write
       actions: read
-    needs: [detect-changes, validate-versions]
-    # bump-versions is skipped on pushes and non-bot PRs, and GitHub propagates
-    # that skip transitively through the needs chain. Check the results we
-    # actually care about explicitly so this job still runs.
+    needs: [detect-changes, bump-versions, validate-versions]
+    # bump-versions only runs on main, validate-versions only on human PRs, so
+    # on any given run one of them is skipped. GitHub propagates that skip
+    # transitively through the needs chain, so check for actual failures
+    # instead of requiring success.
     if: >-
       !cancelled() &&
       needs.detect-changes.result == 'success' &&
-      needs.validate-versions.result == 'success' &&
+      needs.bump-versions.result != 'failure' &&
+      needs.validate-versions.result != 'failure' &&
       needs.detect-changes.outputs.images != '[]' &&
       needs.detect-changes.outputs.images != ''
     strategy:
@@ -393,6 +406,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          # On main this is the commit bump-versions produced, so the VERSION
+          # files read below are the bumped ones. Empty everywhere else, which
+          # checks out the ref that triggered the run.
+          ref: ${{ needs.bump-versions.outputs.build-sha }}
 
       - name: Check if image should be built
         id: should_build
@@ -727,9 +745,106 @@ jobs:
           cache-to: type=gha,mode=max
         continue-on-error: false
 
-  create-release:
+      # Collected per matrix entry rather than derived from detect-changes:
+      # only this job knows whether the image was really built, and derived
+      # variants like heishamon-dev-pio are not in the detect-changes list.
+      - name: Record pushed tags
+        if: >-
+          github.event_name == 'pull_request' &&
+          steps.should_build.outputs.should_build == 'true'
+        run: |
+          mkdir -p /tmp/pr-tags
+          tr ',' '\n' <<< "${{ steps.meta.outputs.tags }}" \
+            > "/tmp/pr-tags/${{ matrix.image }}.txt"
+
+      - name: Upload pushed tags
+        if: >-
+          github.event_name == 'pull_request' &&
+          steps.should_build.outputs.should_build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-tags-${{ matrix.image }}
+          path: /tmp/pr-tags/
+          retention-days: 1
+
+  comment-pr-images:
+    name: Link built images on the PR
     runs-on: ubuntu-latest
     needs: [detect-changes, build-and-push]
+    permissions:
+      pull-requests: write
+      actions: read
+    # Fork PRs get a read-only GITHUB_TOKEN, so commenting would fail there.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.build-and-push.result == 'success' &&
+      needs.detect-changes.outputs.images != '[]' &&
+      needs.detect-changes.outputs.images != ''
+    steps:
+      - name: Download pushed tags
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pr-tags-*
+          merge-multiple: true
+          path: pr-tags
+
+      - name: Post or update the image comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.number }}
+        run: |
+          set -euo pipefail
+
+          shopt -s nullglob
+          files=(pr-tags/*.txt)
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "No images were built, nothing to comment"
+            exit 0
+          fi
+
+          # Only the moving latest-pr tag: it always points at the newest build
+          # of this PR, whereas the versioned one moves when VERSION changes.
+          pulls=$(cat "${files[@]}" | grep ":latest-pr${PR}\$" | sort -u || true)
+          if [[ -z "$pulls" ]]; then
+            echo "No latest-pr${PR} tags found in the recorded output"
+            exit 0
+          fi
+
+          marker="<!-- pr-images -->"
+          {
+            echo "$marker"
+            echo "### 🐳 Images aus diesem PR"
+            echo
+            echo "Öffentlich, kein \`docker login\` nötig:"
+            echo
+            echo '```bash'
+            sed 's/^/docker pull /' <<< "$pulls"
+            echo '```'
+            echo
+            echo "Auch als \`<image>:<VERSION>-pr${PR}\` getaggt."
+            echo "Beide werden bei jedem Push auf den PR überschrieben."
+          } > comment.md
+
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+            --paginate \
+            --jq "[.[] | select(.body | startswith(\"$marker\")) | .id] | first")
+
+          if [[ -n "$id" && "$id" != "null" ]]; then
+            gh api -X PATCH \
+              "repos/$GITHUB_REPOSITORY/issues/comments/$id" \
+              -F body=@comment.md
+            echo "Updated comment $id"
+          else
+            gh api -X POST \
+              "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+              -F body=@comment.md
+            echo "Created a new comment"
+          fi
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, bump-versions, build-and-push]
     permissions:
       contents: write
       packages: write
@@ -748,6 +863,10 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
+          # Without this the release would be cut at the commit that triggered
+          # the run, i.e. one commit before the VERSION bump, and the tag would
+          # not contain the versions the published images were built from.
+          target_commitish: ${{ needs.bump-versions.outputs.build-sha }}
           tag_name: ${{ needs.detect-changes.outputs.repository-version }}
           name: Release ${{ needs.detect-changes.outputs.repository-version }}
           body: |
