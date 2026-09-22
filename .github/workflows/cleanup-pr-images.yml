@@ -129,6 +129,35 @@ jobs:
             exit 1
           fi
 
+          # --- images the matrix no longer lists ------------------------------
+          # An image dropped from the build matrix keeps its PR tags forever,
+          # because nothing would look at that package any more. Add every
+          # container package that is linked to *this* repository. The repo
+          # filter matters: the account holds packages from other repos, whose
+          # -pr<n> tags refer to those repos' PR numbers, not ours.
+          linked=""
+          page=1
+          while :; do
+            body=$(curl -s -H "Authorization: Bearer $TOKEN" -H "$accept" \
+              "$api/user/packages?package_type=container&per_page=100&page=$page")
+            if ! jq -e 'type == "array"' >/dev/null 2>&1 <<< "$body"; then
+              echo "::warning::Could not list the account's packages, using the build matrix only"
+              break
+            fi
+            linked+=$(jq -r --arg repo "$GITHUB_REPOSITORY" \
+              '.[] | select(.repository.full_name == $repo) | .name' <<< "$body")$'\n'
+            [[ "$(jq 'length' <<< "$body")" -lt 100 ]] && break
+            page=$((page + 1))
+          done
+
+          extra=$(comm -13 <(sort <<< "$IMAGES") \
+                           <(grep -E '^[a-z0-9][a-z0-9._-]*$' <<< "$linked" | sort -u))
+          if [[ -n "$extra" ]]; then
+            echo "Packages linked to this repo but no longer in the build matrix:"
+            sed 's/^/  /' <<< "$extra"
+          fi
+          IMAGES=$(printf '%s\n%s\n' "$IMAGES" "$extra" | grep -v '^$' | sort -u)
+
           deleted=0
           failed=0
           kept=0
@@ -225,6 +254,10 @@ jobs:
               fi
             done <<< "$classified"
           done <<< "$IMAGES"
+
+          # Also in the log, not only in the job summary: the log is what is
+          # left to read once the summary is gone or when reading it via the API.
+          echo "Deleted: $deleted · kept: $kept · failed: $failed"
 
           {
             if [[ "$dry_run" == "true" ]]; then
