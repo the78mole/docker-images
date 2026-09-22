@@ -1,0 +1,283 @@
+name: Cleanup PR image tags
+
+# docker-build.yml pushes <image>:<VERSION>-pr<n> and <image>:latest-pr<n> for
+# every pull request. Nothing ever removed them, so GHCR accumulated the PR
+# tags of long-closed PRs. This workflow deletes the package versions that
+# carry *only* PR tags of PRs that are no longer open.
+#
+# Deleting a package version is irreversible, so the manual run defaults to a
+# dry run and every safety check errs on the side of keeping a version.
+
+on:
+  # pull_request_target runs in the context of the base repository, so the
+  # token keeps packages:write even when the PR came from a fork. No PR code
+  # is checked out or executed here -- only the PR number is used.
+  pull_request_target:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only list what would be deleted"
+        type: boolean
+        default: true
+      pr_numbers:
+        description: "PR numbers to clean, comma separated. Empty = every closed PR found in the registry."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+  pull-requests: write
+
+concurrency:
+  group: cleanup-pr-images
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Remove PR tags of closed PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Collect image names from the build matrix
+        id: images
+        run: |
+          set -euo pipefail
+
+          # Single source of truth: the build matrix. all_images_array in
+          # detect-changes is missing heishamon-dev-pio, which does get PR tags.
+          images=$(yq '.jobs.build-and-push.strategy.matrix.include[].image' \
+            .github/workflows/docker-build.yml | sort -u)
+
+          if [[ -z "$images" ]]; then
+            echo "::error::Could not read any image from the build matrix"
+            exit 1
+          fi
+
+          while read -r image; do
+            if [[ ! "$image" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+              echo "::error::Unexpected image name from the build matrix: $image"
+              exit 1
+            fi
+          done <<< "$images"
+
+          echo "Images: $(tr '\n' ' ' <<< "$images")"
+          {
+            echo 'list<<IMAGES_EOF'
+            echo "$images"
+            echo 'IMAGES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Delete PR package versions
+        id: cleanup
+        env:
+          # GITHUB_TOKEN can read and delete container package versions of
+          # repository-linked packages. PACKAGES_TOKEN is an optional escape
+          # hatch: set it to a PAT with read:packages+delete:packages only if
+          # a delete ever comes back as 403. The workflow works without it.
+          TOKEN: ${{ secrets.PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGES: ${{ steps.images.outputs.list }}
+          OWNER: ${{ github.repository_owner }}
+          EVENT: ${{ github.event_name }}
+          CLOSED_PR: ${{ github.event.number }}
+          INPUT_PRS: ${{ inputs.pr_numbers }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          api="https://api.github.com"
+          accept="Accept: application/vnd.github+json"
+
+          # --- what to clean, and what must never be touched ----------------
+          if [[ "$EVENT" == "pull_request_target" ]]; then
+            mode="targets"
+            targets_json="[$CLOSED_PR]"
+            dry_run=false
+          elif [[ -n "${INPUT_PRS// /}" ]]; then
+            mode="targets"
+            targets_json=$(jq -cn --arg s "$INPUT_PRS" \
+              '$s | split(",") | map(gsub("\\s";"")) | map(select(length > 0) | tonumber)')
+            dry_run="$INPUT_DRY_RUN"
+          else
+            mode="sweep"
+            targets_json="[]"
+            dry_run="$INPUT_DRY_RUN"
+          fi
+
+          # Open PRs are protected in every mode -- their images are still in use.
+          protected_json=$(gh pr list --repo "$GITHUB_REPOSITORY" \
+            --state open --limit 200 --json number --jq '[.[].number]')
+
+          echo "Mode: $mode | dry run: $dry_run"
+          echo "Targets: $targets_json"
+          echo "Protected (open PRs): $protected_json"
+
+          # --- token probe --------------------------------------------------
+          probe_image=$(head -n1 <<< "$IMAGES")
+          probe=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $TOKEN" -H "$accept" \
+            "$api/user/packages/container/$probe_image/versions?per_page=1")
+          echo "Packages API reachable with the configured token: HTTP $probe"
+          if [[ "$probe" != "200" ]]; then
+            echo "::error::Cannot list package versions (HTTP $probe). If this is 403, the"
+            echo "::error::GITHUB_TOKEN lacks admin on the package -- set PACKAGES_TOKEN to a"
+            echo "::error::classic PAT with read:packages and delete:packages."
+            exit 1
+          fi
+
+          deleted=0
+          failed=0
+          kept=0
+          : > summary.md
+
+          while read -r image; do
+            [[ -z "$image" ]] && continue
+
+            versions="[]"
+            page=1
+            while :; do
+              body=$(curl -s -H "Authorization: Bearer $TOKEN" -H "$accept" \
+                "$api/user/packages/container/$image/versions?per_page=100&page=$page")
+              if ! jq -e 'type == "array"' >/dev/null 2>&1 <<< "$body"; then
+                echo "::warning::$image: unexpected API response, skipping image"
+                versions="[]"
+                break
+              fi
+              count=$(jq 'length' <<< "$body")
+              versions=$(jq -c -s 'add' <<< "$versions"$'\n'"$body")
+              [[ "$count" -lt 100 ]] && break
+              page=$((page + 1))
+            done
+
+            # Classify every version. A version is deletable only if it carries
+            # at least one PR tag and *nothing but* PR tags of targeted,
+            # non-protected PRs. Release tags (latest, 1.2.3) or an open PR on
+            # any of its tags keep the whole version -- a single version can
+            # carry several tags, and deleting it would take all of them down.
+            classified=$(jq -c \
+              --argjson protected "$protected_json" \
+              --argjson targets "$targets_json" \
+              --arg mode "$mode" '
+              .[]
+              | { id: .id, tags: (.metadata.container.tags // []) }
+              | . + {
+                  prs: ([ .tags[] | select(test("-pr[0-9]+$"))
+                          | capture("-pr(?<n>[0-9]+)$").n | tonumber ] | unique),
+                  other: [ .tags[] | select(test("-pr[0-9]+$") | not) ]
+                }
+              | . + {
+                  verdict: (
+                    if (.tags | length) == 0 then "keep: untagged"
+                    elif (.prs | length) == 0 then "keep: no PR tag"
+                    elif (.other | length) > 0 then "keep: also carries " + (.other | join(", "))
+                    elif any(.prs[]; . as $n | $protected | index($n) != null) then "keep: PR still open"
+                    elif $mode == "sweep" then "delete"
+                    # A digest can carry the PR tags of several PRs at once (an
+                    # unchanged image builds to the same digest). None of them is
+                    # open at this point, so taking the whole version is safe.
+                    elif any(.prs[]; . as $n | $targets | index($n) != null) then "delete"
+                    else "keep: not in the requested PR list"
+                    end )
+                }' <<< "$versions")
+
+            [[ -z "$classified" ]] && continue
+
+            while read -r v; do
+              [[ -z "$v" ]] && continue
+              id=$(jq -r '.id' <<< "$v")
+              tags=$(jq -r '.tags | join(", ")' <<< "$v")
+              verdict=$(jq -r '.verdict' <<< "$v")
+
+              if [[ "$verdict" != "delete" ]]; then
+                # Only report kept versions that actually have PR tags, so the
+                # summary does not drown in release versions.
+                if [[ $(jq '.prs | length' <<< "$v") -gt 0 ]]; then
+                  echo "| \`$image\` | $tags | $verdict |" >> summary.md
+                  kept=$((kept + 1))
+                fi
+                continue
+              fi
+
+              if [[ "$dry_run" == "true" ]]; then
+                echo "would delete $image version $id ($tags)"
+                echo "| \`$image\` | $tags | would delete |" >> summary.md
+                deleted=$((deleted + 1))
+                continue
+              fi
+
+              code=$(curl -s -o delete.out -w '%{http_code}' -X DELETE \
+                -H "Authorization: Bearer $TOKEN" -H "$accept" \
+                "$api/user/packages/container/$image/versions/$id")
+
+              if [[ "$code" == "204" ]]; then
+                echo "deleted $image version $id ($tags)"
+                echo "| \`$image\` | $tags | deleted |" >> summary.md
+                deleted=$((deleted + 1))
+              else
+                echo "::warning::$image version $id ($tags): delete failed with HTTP $code"
+                cat delete.out || true
+                echo "| \`$image\` | $tags | FAILED (HTTP $code) |" >> summary.md
+                failed=$((failed + 1))
+              fi
+            done <<< "$classified"
+          done <<< "$IMAGES"
+
+          {
+            if [[ "$dry_run" == "true" ]]; then
+              echo "## 🧪 Dry run -- nothing was deleted"
+            else
+              echo "## 🧹 PR image cleanup"
+            fi
+            echo
+            echo "| Image | Tags | Result |"
+            echo "|-------|------|--------|"
+            if [[ -s summary.md ]]; then cat summary.md; else echo "| - | - | nothing to do |"; fi
+            echo
+            echo "Deleted: $deleted · kept: $kept · failed: $failed"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "deleted=$deleted" >> "$GITHUB_OUTPUT"
+          echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+
+          if [[ "$failed" -gt 0 ]]; then
+            echo "::error::$failed package version(s) could not be deleted."
+            echo "::error::On HTTP 403 set PACKAGES_TOKEN to a classic PAT with delete:packages."
+            exit 1
+          fi
+
+      - name: Mark the image comment as cleaned up
+        if: >-
+          github.event_name == 'pull_request_target' &&
+          steps.cleanup.outputs.dry_run == 'false' &&
+          steps.cleanup.outputs.deleted != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.number }}
+        run: |
+          set -euo pipefail
+
+          # docker-build.yml posts this comment with the pull commands for the
+          # images built from the PR. Those images are gone now, so say so
+          # instead of leaving commands that fail with "manifest unknown".
+          marker="<!-- pr-images -->"
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+            --paginate \
+            --jq "[.[] | select(.body | startswith(\"$marker\")) | .id] | first")
+
+          if [[ -z "$id" || "$id" == "null" ]]; then
+            echo "No image comment on this PR, nothing to update"
+            exit 0
+          fi
+
+          {
+            echo "$marker"
+            echo "### 🐳 Images aus diesem PR"
+            echo
+            echo "Der PR ist geschlossen, die \`-pr${PR}\`-Tags wurden aus GHCR entfernt."
+          } > comment.md
+
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@comment.md

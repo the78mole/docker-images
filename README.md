@@ -111,7 +111,8 @@ Each image can be used as a development container. Example `.devcontainer/devcon
 ```
 docker-images/
 ├── .github/workflows/          # CI/CD workflows
-│   └── docker-build.yml        # Matrix-based build workflow
+│   ├── docker-build.yml        # Matrix-based build workflow
+│   └── cleanup-pr-images.yml   # Removes PR image tags from GHCR
 ├── images/                     # Docker image sources
 │   ├── kicaddev/              # KiCad CLI tools
 │   │   ├── Dockerfile
@@ -150,6 +151,21 @@ Our workflow intelligently builds only changed images:
 - **Push to `main`** - Builds changed images and creates releases
 - **Pull Requests** - Builds all images for validation
 - **Manual Dispatch** - Builds all images on demand
+
+### PR Image Cleanup
+
+PR builds push `<image>:<VERSION>-pr<n>` and `<image>:latest-pr<n>` so dependent
+images can be built and tested against them. `cleanup-pr-images.yml` removes
+those tags from GHCR again, so the registry does not keep the leftovers of every
+merged PR:
+
+- **Automatic** - runs when a pull request is closed and deletes its PR tags
+- **Manual sweep** - `workflow_dispatch` without a PR number cleans up every
+  closed PR still present in the registry. It defaults to a dry run that only
+  lists what it would delete
+- **Safety** - a package version is deleted only if it carries nothing but PR
+  tags of PRs that are no longer open. Release tags (`latest`, `1.2.3`) and
+  untagged versions are never touched
 
 ### Version Management
 
