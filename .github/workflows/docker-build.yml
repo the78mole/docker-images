@@ -775,9 +775,15 @@ jobs:
       pull-requests: write
       actions: read
     # Fork PRs get a read-only GITHUB_TOKEN, so commenting would fail there.
+    # bump-versions and validate-versions are skipped depending on the event and
+    # the author, and GitHub propagates that skip transitively down the needs
+    # chain -- the same trap build-and-push and create-release already guard
+    # against. Without !cancelled() this job is skipped on every single PR.
     if: >-
+      !cancelled() &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.detect-changes.result == 'success' &&
       needs.build-and-push.result == 'success' &&
       needs.detect-changes.outputs.images != '[]' &&
       needs.detect-changes.outputs.images != ''
