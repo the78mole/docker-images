@@ -28,6 +28,7 @@ All images are available on GitHub Container Registry at `ghcr.io/the78mole/<ima
 | **`nrfconnectsdk`** | Nordic nRF Connect SDK development | ~761MB | nRF microcontroller firmware, Zephyr RTOS |
 | **`jumpstarter-dev`** | Complete Jumpstarter development environment | ~1.58GB | Kind cluster, Docker-in-Docker, Robot Framework |
 | **`openclaw`** | OpenClaw AI agent platform | ~TBD | AI-powered autonomous agent, coding assistant |
+| **`pandoc-chromium`** | Pandoc + headless Chromium | ~TBD | Markdown → PDF in CI (with git and gh) |
 
 ---
 
