@@ -26,6 +26,7 @@ All images are available on GitHub Container Registry at `ghcr.io/the78mole/<ima
 | **`latex`** | LaTeX/TeXLive environment | ~4.8GB | Document generation, academic papers |
 | **`latex-node`** | LaTeX + Node.js development | ~7.99GB | Document generation with JavaScript tooling |
 | **`nrfconnectsdk`** | Nordic nRF Connect SDK development | ~761MB | nRF microcontroller firmware, Zephyr RTOS |
+| **`pandoc-chromium`** | Pandoc + headless Chromium | ~TBD | Markdown → PDF in CI (with git and gh) |
 
 ---
 

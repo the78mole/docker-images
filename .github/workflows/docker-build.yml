@@ -48,8 +48,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get list of all images
-          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr freertos-dev-posix nrfconnectsdk)
-          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "freertos-dev-posix", "nrfconnectsdk"]'          # Function to check if package version exists in GHCR
+          all_images_array=(kicaddev platformio wordpress-smtp heishamon-dev arduino-cli latex zephyr freertos-dev-posix nrfconnectsdk pandoc-chromium)
+          all_images='["kicaddev", "platformio", "wordpress-smtp", "heishamon-dev", "arduino-cli", "latex", "zephyr", "freertos-dev-posix", "nrfconnectsdk", "pandoc-chromium"]'          # Function to check if package version exists in GHCR
           check_package_exists() {
             local image=$1
             local version=$2
@@ -391,6 +391,11 @@ jobs:
           - image: nrfconnectsdk
             dockerfile: Dockerfile
             context: images/nrfconnectsdk
+            dependencies: []
+            spacefree: false
+          - image: pandoc-chromium
+            dockerfile: Dockerfile
+            context: images/pandoc-chromium
             dependencies: []
             spacefree: false
     steps:
@@ -807,6 +812,14 @@ jobs:
             exit 0
           fi
 
+          # The same images under their versioned tag, registry prefix dropped
+          # because it is already spelled out in the pull commands above.
+          versioned=$(cat "${files[@]}" \
+            | grep -- "-pr${PR}\$" \
+            | grep -v -- ":latest-pr${PR}\$" \
+            | sed 's#^.*/##' \
+            | sort -u || true)
+
           marker="<!-- pr-images -->"
           {
             echo "$marker"
@@ -817,9 +830,14 @@ jobs:
             echo '```bash'
             sed 's/^/docker pull /' <<< "$pulls"
             echo '```'
+            if [[ -n "$versioned" ]]; then
+              echo
+              echo "Dieselben Images unter ihrem versionierten Tag:"
+              echo
+              sed 's/^/- `/; s/$/`/' <<< "$versioned"
+            fi
             echo
-            echo "Auch als \`<image>:<VERSION>-pr${PR}\` getaggt."
-            echo "Beide werden bei jedem Push auf den PR überschrieben."
+            echo "Alle Tags werden bei jedem Push auf den PR überschrieben."
           } > comment.md
 
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \

@@ -1,4 +1,4 @@
-FROM wordpress:7.1.2-apache
+FROM wordpress:7.1.3-apache
 
 # Install msmtp, ca-certificates and PHP MySQL extension
 RUN apt-get update && \
@@ -14,4 +14,3 @@ RUN chmod +x /usr/local/bin/msmtp_entrypoint.sh
 # Hook into WordPress entrypoint
 ENTRYPOINT ["/usr/local/bin/msmtp_entrypoint.sh"]
 CMD ["docker-entrypoint.sh", "apache2-foreground"]
-# throwaway: exercise validate-versions without a VERSION bump
