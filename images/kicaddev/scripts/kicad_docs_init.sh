@@ -248,7 +248,7 @@ Quick Start
 
 .. note::
    
-   Dieses Projekt wurde mit KiCad 9.0+ entwickelt. Stellen Sie sicher, dass Sie eine kompatible Version verwenden.
+   Dieses Projekt wurde mit KiCad 10.0+ entwickelt. Stellen Sie sicher, dass Sie eine kompatible Version verwenden.
 
 1. **Projekt öffnen**: Öffnen Sie \`$KICAD_PROJECT.kicad_pro\` in KiCad
 2. **Schaltplan prüfen**: Überprüfen Sie den Schaltplan auf Vollständigkeit
@@ -301,7 +301,7 @@ Entwicklungsumgebung
 
 Verwendete Tools:
 
-* **KiCad 9.0+**: PCB Design Suite
+* **KiCad 10.0+**: PCB Design Suite
 * **Python**: Automatisierte Skripts
 * **Docker**: Containerisierte Build-Umgebung
 
@@ -326,7 +326,7 @@ Systemanforderungen
 
 **Software:**
 
-* KiCad 9.0 oder höher
+* KiCad 10.0 oder höher
 * Python 3.8+ (für Skripts)
 * Git (für Versionskontrolle)
 

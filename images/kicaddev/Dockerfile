@@ -45,8 +45,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-# Install KiCad 9.0 from PPA
-RUN add-apt-repository --yes ppa:kicad/kicad-9.0-releases \
+# Install KiCad 10.0 from PPA. The PPA only keeps the newest point release, so
+# we track the 10.0 series and fail the build if apt resolves anything else.
+ARG KICAD_SERIES=10.0
+RUN add-apt-repository --yes ppa:kicad/kicad-${KICAD_SERIES}-releases \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         kicad \
@@ -55,7 +57,8 @@ RUN add-apt-repository --yes ppa:kicad/kicad-9.0-releases \
         kicad-symbols \
         kicad-packages3d \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && kicad-cli version | tee /dev/stderr | grep -q "^${KICAD_SERIES}\."
 
 # Install Python packages for KiCad production extensions and documentation
 COPY requirements.txt /tmp/requirements.txt
