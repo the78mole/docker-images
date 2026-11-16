@@ -170,7 +170,7 @@ merged PR:
 Complete KiCad CLI environment for PCB production automation.
 
 **Features:**
-- KiCad 9.0 CLI tools
+- KiCad 10.0 CLI tools
 - Python automation libraries (KiKit, PCBDraw)
 - Sphinx documentation tools
 - LaTeX support for PDF generation
